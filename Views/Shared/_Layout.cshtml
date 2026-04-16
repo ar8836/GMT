@@ -1,0 +1,756 @@
+﻿@{
+    string activeModule = ViewData["ActiveModule"]?.ToString() ?? "dashboard";
+    string userName = ViewData["UserName"]?.ToString() ?? "Admin Usuario";
+    string userRole = ViewData["UserRole"]?.ToString() ?? "Coordinador TI";
+    string userInitials = string.Join("", userName.Split(' ').Take(2).Select(s => s[0].ToString().ToUpper()));
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GMT — @ViewData["Title"]</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Font Awesome 6 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" />
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+    <style>
+        /* ─── CSS Variables ───────────────────────────── */
+        :root {
+            --navy:          #002366;
+            --navy-dark:     #001540;
+            --navy-mid:      #00307a;
+            --navy-light:    #0a3a8f;
+            --accent:        #4a90d9;
+            --accent-bright: #5ba3f5;
+            --bg:            #f0f3f8;
+            --bg-card:       #ffffff;
+            --sidebar-w:     260px;
+            --navbar-h:      64px;
+            --text-primary:  #0d1b3e;
+            --text-secondary:#4a5568;
+            --text-muted:    #8492a6;
+            --border:        #e2e8f0;
+            --shadow-sm:     0 1px 3px rgba(0,35,102,.07), 0 1px 2px rgba(0,35,102,.06);
+            --shadow-md:     0 4px 20px rgba(0,35,102,.10);
+            --shadow-lg:     0 10px 40px rgba(0,35,102,.15);
+            --radius:        12px;
+            --radius-sm:     8px;
+            --transition:    all .22s cubic-bezier(.4,0,.2,1);
+        }
+
+        /* ─── Reset & Base ────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* ─── Sidebar ─────────────────────────────────── */
+        .gmt-sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            width: var(--sidebar-w);
+            height: 100vh;
+            background: linear-gradient(180deg, var(--navy-dark) 0%, var(--navy) 60%, var(--navy-mid) 100%);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            transition: var(--transition);
+            overflow: hidden;
+        }
+
+        /* Geometric accent line */
+        .gmt-sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(180deg, transparent, var(--accent) 40%, transparent);
+            opacity: .4;
+        }
+
+        /* Subtle pattern overlay */
+        .gmt-sidebar::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle at 80% 20%, rgba(74,144,217,.08) 0%, transparent 50%),
+                              radial-gradient(circle at 20% 80%, rgba(74,144,217,.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* ── Brand ── */
+        .sidebar-brand {
+            padding: 0 24px;
+            height: var(--navbar-h);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+            border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(74,144,217,.4);
+            flex-shrink: 0;
+        }
+
+        .brand-text {
+            display: flex; flex-direction: column;
+            line-height: 1.1;
+        }
+
+        .brand-name {
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: .5px;
+        }
+
+        .brand-sub {
+            font-size: 9.5px;
+            font-weight: 500;
+            color: rgba(255,255,255,.45);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* ── Nav ── */
+        .sidebar-nav {
+            flex: 1;
+            padding: 20px 12px;
+            overflow-y: auto;
+            scrollbar-width: none;
+            position: relative;
+            z-index: 1;
+        }
+
+        .sidebar-nav::-webkit-scrollbar { display: none; }
+
+        .nav-section-label {
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,.3);
+            padding: 16px 12px 8px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .nav-item { margin-bottom: 2px; }
+
+        .nav-link-gmt {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            color: rgba(255,255,255,.65);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 13.5px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link-gmt::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(74,144,217,.15), rgba(74,144,217,.05));
+            border-radius: inherit;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .nav-link-gmt:hover {
+            color: rgba(255,255,255,.95);
+        }
+
+        .nav-link-gmt:hover::before { opacity: 1; }
+
+        .nav-link-gmt.active {
+            color: #fff;
+            background: linear-gradient(90deg, rgba(74,144,217,.25), rgba(74,144,217,.1));
+            border-left: 3px solid var(--accent);
+        }
+
+        .nav-link-gmt .nav-icon {
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            background: rgba(255,255,255,.07);
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+
+        .nav-link-gmt.active .nav-icon,
+        .nav-link-gmt:hover .nav-icon {
+            background: rgba(74,144,217,.25);
+            color: var(--accent-bright);
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--accent);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 20px;
+        }
+
+        /* Collapsible sub-menu */
+        .nav-collapse .nav-sub-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px 8px 42px;
+            border-radius: var(--radius-sm);
+            color: rgba(255,255,255,.5);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 400;
+            transition: var(--transition);
+        }
+
+        .nav-collapse .nav-sub-link::before {
+            content: '';
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.3);
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+
+        .nav-collapse .nav-sub-link:hover {
+            color: rgba(255,255,255,.9);
+        }
+
+        .nav-collapse .nav-sub-link:hover::before {
+            background: var(--accent-bright);
+        }
+
+        /* ── Sidebar Footer ── */
+        .sidebar-footer {
+            padding: 16px 12px;
+            border-top: 1px solid rgba(255,255,255,.08);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .sidebar-user:hover {
+            background: rgba(255,255,255,.06);
+        }
+
+        .user-avatar-sm {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            flex-shrink: 0;
+            letter-spacing: .3px;
+        }
+
+        .user-info-sm { flex: 1; min-width: 0; }
+
+        .user-name-sm {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: rgba(255,255,255,.9);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-role-sm {
+            font-size: 10.5px;
+            color: rgba(255,255,255,.4);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ─── Navbar ──────────────────────────────────── */
+        .gmt-navbar {
+            position: fixed;
+            top: 0;
+            left: var(--sidebar-w);
+            right: 0;
+            height: var(--navbar-h);
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 16px;
+            z-index: 900;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+
+        .navbar-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .navbar-toggle:hover {
+            background: var(--bg);
+            color: var(--navy);
+        }
+
+        .navbar-search {
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-wrapper .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 13px;
+            pointer-events: none;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 16px 8px 38px;
+            background: var(--bg);
+            border: 1.5px solid transparent;
+            border-radius: 24px;
+            font-size: 13px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: var(--text-primary);
+            transition: var(--transition);
+            outline: none;
+        }
+
+        .search-input::placeholder { color: var(--text-muted); }
+
+        .search-input:focus {
+            background: #fff;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(74,144,217,.12);
+        }
+
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .action-btn {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .action-btn:hover {
+            background: var(--bg);
+            color: var(--navy);
+        }
+
+        .notif-dot {
+            position: absolute;
+            top: 7px; right: 7px;
+            width: 7px; height: 7px;
+            background: #e74c3c;
+            border-radius: 50%;
+            border: 1.5px solid #fff;
+        }
+
+        .navbar-divider {
+            width: 1px;
+            height: 28px;
+            background: var(--border);
+            margin: 0 6px;
+        }
+
+        .profile-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 24px;
+            transition: var(--transition);
+        }
+
+        .profile-area:hover { background: var(--bg); }
+
+        .user-avatar {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--navy), var(--accent));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: .3px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,35,102,.2);
+        }
+
+        .profile-info { display: flex; flex-direction: column; line-height: 1.2; }
+
+        .profile-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .profile-role {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* ─── Main Content ────────────────────────────── */
+        .gmt-main {
+            margin-left: var(--sidebar-w);
+            margin-top: var(--navbar-h);
+            padding: 28px;
+            min-height: calc(100vh - var(--navbar-h));
+            transition: var(--transition);
+        }
+
+        /* ─── Page Header ─────────────────────────────── */
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -.3px;
+        }
+
+        .page-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .breadcrumb-gmt {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .breadcrumb-gmt a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .breadcrumb-gmt a:hover { text-decoration: underline; }
+
+        /* ─── Cards ───────────────────────────────────── */
+        .gmt-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+
+        .gmt-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        /* ─── Overlay (mobile) ────────────────────────── */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.45);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity .3s ease;
+        }
+
+        /* ─── Responsive ──────────────────────────────── */
+        @@media (max-width: 991.98px) {
+            .gmt-sidebar {
+                transform: translateX(calc(-1 * var(--sidebar-w)));
+                box-shadow: none;
+            }
+
+            .gmt-sidebar.open {
+                transform: translateX(0);
+                box-shadow: var(--shadow-lg);
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+                opacity: 1;
+            }
+
+            .gmt-navbar {
+                left: 0;
+            }
+
+            .navbar-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .gmt-main { margin-left: 0; }
+
+            .profile-info { display: none; }
+        }
+
+        @@media (max-width: 575.98px) {
+            .gmt-main { padding: 16px; }
+            .gmt-navbar { padding: 0 16px; }
+            .navbar-search { max-width: 180px; }
+        }
+
+        /* ─── Utilities ───────────────────────────────── */
+        .text-navy { color: var(--navy) !important; }
+        .bg-navy { background-color: var(--navy) !important; }
+        .border-accent { border-color: var(--accent) !important; }
+
+        /* Scroll custom */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Entry animation */
+        @@keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-up { animation: fadeUp .4s ease both; }
+    </style>
+
+    @RenderSection("Styles", required: false)
+</head>
+<body>
+
+    <!-- ═══ SIDEBAR ═══════════════════════════════════════════ -->
+    <aside class="gmt-sidebar" id="gmtSidebar">
+
+        <!-- Brand -->
+        <div class="sidebar-brand">
+            <div class="brand-icon">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <div class="brand-text">
+                <span class="brand-name">GMT</span>
+                <span class="brand-sub">Gestor Modular</span>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+
+            <div class="nav-section-label">Principal</div>
+
+            <div class="nav-item">
+                <a href="/Home/Index" class="nav-link-gmt @(activeModule == "dashboard" ? "active" : "")">
+                    <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+
+            <div class="nav-section-label">Módulos</div>
+
+            <!-- Vinculación (con sub-módulos) -->
+            <div class="nav-item">
+                <a href="#vinculacionMenu" class="nav-link-gmt @(activeModule == "vinculacion" ? "active" : "")"
+                   data-bs-toggle="collapse" aria-expanded="@(activeModule == "vinculacion" ? "true" : "false")">
+                    <span class="nav-icon"><i class="fas fa-handshake"></i></span>
+                    <span>Vinculación</span>
+                    <i class="fas fa-chevron-down ms-auto" style="font-size:10px; opacity:.5; transition: transform .2s"></i>
+                </a>
+                <div class="collapse nav-collapse @(activeModule == "vinculacion" ? "show" : "")" id="vinculacionMenu">
+                    <a href="#" class="nav-sub-link">Residencias Profesionales</a>
+                    <a href="#" class="nav-sub-link">Servicio Social</a>
+                </div>
+            </div>
+
+            <div class="nav-item">
+                <a href="#" class="nav-link-gmt @(activeModule == "titulacion" ? "active" : "")">
+                    <span class="nav-icon"><i class="fas fa-graduation-cap"></i></span>
+                    <span>Titulación</span>
+                    <span class="nav-badge">3</span>
+                </a>
+            </div>
+
+            <div class="nav-section-label">Sistema</div>
+
+            <div class="nav-item">
+                <a href="#" class="nav-link-gmt @(activeModule == "config" ? "active" : "")">
+                    <span class="nav-icon"><i class="fas fa-sliders"></i></span>
+                    <span>Configuración</span>
+                </a>
+            </div>
+
+        </nav>
+
+        <!-- Footer -->
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="user-avatar-sm">@userInitials</div>
+                <div class="user-info-sm">
+                    <div class="user-name-sm">@userName</div>
+                    <div class="user-role-sm">@userRole</div>
+                </div>
+                <i class="fas fa-ellipsis-h" style="color:rgba(255,255,255,.3); font-size:12px;"></i>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- Overlay para móvil -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ═══ NAVBAR ════════════════════════════════════════════ -->
+    <header class="gmt-navbar">
+
+        <button class="navbar-toggle" id="sidebarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Search -->
+        <div class="navbar-search">
+            <div class="search-wrapper">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="search-input" placeholder="Buscar expediente, alumno…" />
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="navbar-actions">
+            <button class="action-btn" title="Notificaciones">
+                <i class="fas fa-bell"></i>
+                <span class="notif-dot"></span>
+            </button>
+            <button class="action-btn" title="Mensajes">
+                <i class="fas fa-envelope"></i>
+            </button>
+            <div class="navbar-divider"></div>
+
+            <!-- Profile -->
+            <div class="profile-area" id="profileBtn">
+                <div class="user-avatar">@userInitials</div>
+                <div class="profile-info">
+                    <span class="profile-name">@userName</span>
+                    <span class="profile-role">@userRole</span>
+                </div>
+                <i class="fas fa-chevron-down ms-1" style="font-size:10px; color:var(--text-muted);"></i>
+            </div>
+        </div>
+
+    </header>
+
+    <!-- ═══ MAIN CONTENT ══════════════════════════════════════ -->
+    <main class="gmt-main">
+        @RenderBody()
+    </main>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ── Sidebar toggle (mobile) ──────────────────────────
+        const toggle  = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('gmtSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        function openSidebar() {
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        toggle?.addEventListener('click', () => {
+            sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+        });
+
+        overlay?.addEventListener('click', closeSidebar);
+
+        // ── Chevron rotation on collapse ────────────────────
+        document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(btn => {
+            const chevron = btn.querySelector('.fa-chevron-down');
+            btn.addEventListener('click', () => {
+                const expanded = btn.getAttribute('aria-expanded') === 'true';
+                if (chevron) chevron.style.transform = expanded ? 'rotate(0deg)' : 'rotate(-180deg)';
+            });
+        });
+    </script>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>
