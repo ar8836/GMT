@@ -24,9 +24,8 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}"); // Cambiado de Home a Account
 
-//app.UseHttpsRedirection();
-//app.UseStaticFiles();
-//app.UseRouting();
-//app.UseAuthorization();
-//app.MapRazorPages();
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
 app.Run();
