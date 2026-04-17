@@ -513,7 +513,7 @@
                     <div class="input-wrapper">
                         <input type="email"
                                id="email"
-                               name="Email"
+                               name="correo"
                                class="form-input-gmt"
                                placeholder="usuario@instituto.edu.mx"
                                autocomplete="username"
@@ -528,7 +528,7 @@
                     <div class="input-wrapper">
                         <input type="password"
                                id="password"
-                               name="Password"
+                               name="password"
                                class="form-input-gmt"
                                placeholder="••••••••"
                                autocomplete="current-password"
@@ -548,6 +548,13 @@
                     </label>
                     <a href="#" class="forgot-link">¿Olvidaste tu contraseña?</a>
                 </div>
+
+                @if (ViewBag.Error != null)
+                {
+                    <div class="alert-error-gmt" style="color: #ff4d4d; background: rgba(255, 77, 77, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 0.9em; border: 1px solid #ff4d4d;">
+                        <i class="fas fa-exclamation-circle"></i> @ViewBag.Error
+                    </div>
+                }
 
                 <!-- Submit -->
                 <button type="submit" class="btn-login" id="btnLogin">
@@ -598,20 +605,6 @@
         // ── Loading state en submit ──────────────────────────
         const form    = document.getElementById('loginForm');
         const btnLog  = document.getElementById('btnLogin');
-
-        form?.addEventListener('submit', (e) => {
-            e.preventDefault(); // Quitar en producción con back-end real
-
-            const originalHTML = btnLog.innerHTML;
-            btnLog.innerHTML = `<span><i class="fas fa-circle-notch fa-spin"></i> Verificando…</span>`;
-            btnLog.disabled = true;
-
-            // Simular petición (demo)
-            setTimeout(() => {
-                // Para demo: ir al Dashboard
-                window.location.href = '/Home/Index';
-            }, 1400);
-        });
     </script>
 </body>
 </html>
