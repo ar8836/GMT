@@ -484,5 +484,5 @@ $RECYCLE.BIN/
 *.swp
 
 // No inlcuir appsttings.json para evitar filtrar datos sensibles como cadenas de conexión a bases de datos, claves de API, etc. Si es necesario, se puede incluir un appsettings.Development.json con valores de configuración para el entorno de desarrollo, etc.
-appsttings.json
-appsttings.Development.json
+appettings.json
+appsettings.Development.json
