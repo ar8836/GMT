@@ -1,0 +1,12 @@
+{
+  "region": "us-east-1",
+  "configuration": "Debug",
+  "framework": "net8.0",
+  "self-contained": true,
+  "application": "GMT",
+  "environment": "GMT-dev",
+  "enable-xray": false,
+  "enhanced-health-type": "enhanced",
+  "additional-options": "",
+  "proxy-server": "nginx"
+}
