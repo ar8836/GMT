@@ -1,7 +1,7 @@
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:8082",
-    "ANTHROPIC_AUTH_TOKEN": "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",
+    "ANTHROPIC_AUTH_TOKEN": "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",
     "ANTHROPIC_API_KEY": "temp",
     "ANTHROPIC_MODEL": "claude-3-5-sonnet-20241022"
   },
@@ -11,7 +11,8 @@
       "Bash(git pull *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(dotnet build *)"
     ]
   },
   "spinnerTipsEnabled": false

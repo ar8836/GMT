@@ -11,22 +11,25 @@ namespace GMT.Models
         public int Id { get; set; }
 
         [Column("login_id")]
-        public int LoginId { get; set; }
+        public int? LoginId { get; set; }
 
         [Column("nombre_completo")]
-        public string NombreCompleto { get; set; }
+        public string? NombreCompleto { get; set; }
 
         [Column("numero_control")]
-        public string NumeroControl { get; set; }
+        public string? NumeroControl { get; set; }
 
         [Column("carrera")]
-        public string Carrera { get; set; }
+        public string? Carrera { get; set; }
 
         [Column("semestre")]
         public int Semestre { get; set; }
 
+        [Column("foto_perfil_url")]
+        public string? FotoPerfilUrl { get; set; }
+
         // Relación virtual para navegar entre tablas en C#
         [ForeignKey("LoginId")]
-        public virtual Login Login { get; set; }
+        public virtual Login? Login { get; set; }
     }
 }
