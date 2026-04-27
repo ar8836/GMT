@@ -18,7 +18,7 @@ namespace GMT.Services
         {
             _s3Client = s3Client;
             _configuration = configuration;
-            _bucketName = _configuration["AWS:S3BucketName"];
+            _bucketName = _configuration["AWS:S3BucketName"] ?? throw new ArgumentNullException("AWS:S3BucketName", "S3 bucket name is not configured in appsettings.json");
         }
 
         public async Task<string> UploadFileAsync(IFormFile file, string key)
@@ -48,6 +48,8 @@ namespace GMT.Services
 
         public async Task<string> GetFileUrlAsync(string key, int expiresInHours = 24)
         {
+            // Yield to make async
+            await Task.Yield();
             var request = new GetPreSignedUrlRequest
             {
                 BucketName = _bucketName,

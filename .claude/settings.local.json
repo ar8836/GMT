@@ -1,20 +1,19 @@
 {
   "env": {
-    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8082",
-    "ANTHROPIC_AUTH_TOKEN": "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",
-    "ANTHROPIC_API_KEY": "temp",
-    "ANTHROPIC_MODEL": "claude-3-5-sonnet-20241022"
+    "ANTHROPIC_BASE_URL": "http://localhost:8082",
+    "ANTHROPIC_AUTH_TOKEN": "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",
+    "ANTHROPIC_API_KEY": "tmp",
+    "ANTHROPIC_MODEL": "claude-opus-4-7",
+    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
   },
   "permissions": {
     "allow": [
-      "Bash(python *)",
-      "Bash(git pull *)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(git push *)",
-      "Bash(dotnet build *)",
-      "Bash(dotnet add package *)"
+      "Bash(dotnet watch run *)",
+      "Bash(jira *)",
+      "Bash(export USE_MOCK_API=true)",
+      "Bash(dotnet run *)",
+      "Bash(USE_MOCK_API=true dotnet run --urls \"https://localhost:5001\")",
+      "Bash(pkill -f \"dotnet\")"
     ]
-  },
-  "spinnerTipsEnabled": false
+  }
 }
