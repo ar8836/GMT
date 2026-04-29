@@ -1,7 +1,7 @@
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://localhost:8082",
-    "ANTHROPIC_AUTH_TOKEN": "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",
+    "ANTHROPIC_AUTH_TOKEN": "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",
     "ANTHROPIC_API_KEY": "tmp",
     "ANTHROPIC_MODEL": "claude-opus-4-7"
   },
