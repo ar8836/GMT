@@ -1,10 +1,9 @@
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://localhost:8082",
-    "ANTHROPIC_AUTH_TOKEN": "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",
+    "ANTHROPIC_AUTH_TOKEN": "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",
     "ANTHROPIC_API_KEY": "tmp",
-    "ANTHROPIC_MODEL": "claude-opus-4-7",
-    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
+    "ANTHROPIC_MODEL": "claude-opus-4-7"
   },
   "permissions": {
     "allow": [
@@ -13,7 +12,9 @@
       "Bash(export USE_MOCK_API=true)",
       "Bash(dotnet run *)",
       "Bash(USE_MOCK_API=true dotnet run --urls \"https://localhost:5001\")",
-      "Bash(pkill -f \"dotnet\")"
+      "Bash(pkill -f \"dotnet\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/)",
+      "Bash(pkill -f \"dotnet watch\")"
     ]
   }
 }

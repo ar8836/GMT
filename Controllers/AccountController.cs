@@ -13,11 +13,18 @@ namespace GMT.Controllers
             _context = context;
         }
 
-        // Muestra la página de Login
+        // Portal de acceso (login + registro)
+        [HttpGet]
+        public IActionResult Index()
+        {
+            return View();
+        }
+
+        // Muestra la página de Login (redirigir al portal)
         [HttpGet]
         public IActionResult Login()
         {
-            return View();
+            return RedirectToAction("Index");
         }
 
         // Procesa los datos del formulario

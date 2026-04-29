@@ -46,6 +46,9 @@ builder.Services.AddScoped<GMT.Services.IRfcValidationService, GMT.Services.RfcV
 builder.Services.AddHttpClient<GMT.Services.RfcValidationService>(); // For IHttpClientFactory
 builder.Services.AddScoped<GMT.Services.IRfcValidationService, GMT.Services.RfcValidationService>();
 
+// Registrar IVerificationService
+builder.Services.AddScoped<GMT.Services.IVerificationService, GMT.Services.VerificationService>();
+
 // builder.Services.AddRazorPages();
 var app = builder.Build();
 
@@ -57,13 +60,13 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowSpecificOrigins"); // Habilitar CORS
 app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Account}/{action=Login}/{id?}"); // Cambiado de Home a Account
+    pattern: "{controller=Account}/{action=Index}/{id?}"); // Cambiado de Home a Account
 
 app.Run();
