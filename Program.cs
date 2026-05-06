@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,9 @@ builder.Services.AddCors(options =>
 // Configurar la conexión a PostgreSQL en AWS
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options => { options.LoginPath = "/Account/Index"; });
 
 // Register AWS SDK services with lazy credential validation
 var awsOptions = builder.Configuration.GetAWSOptions();
@@ -64,9 +68,10 @@ if (!app.Environment.IsDevelopment())
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowSpecificOrigins"); // Habilitar CORS
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Account}/{action=Index}/{id?}"); // Cambiado de Home a Account
+    pattern: "{controller=Account}/{action=Index}/{id?}");
 
 app.Run();

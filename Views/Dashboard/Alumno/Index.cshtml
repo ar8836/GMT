@@ -2,14 +2,26 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "Dashboard";
     ViewData["ActiveModule"] = "dashboard";
-    ViewData["UserName"] = "Ing. Carlos Mendoza";
-    ViewData["UserRole"] = "Coordinador de TI";
+    ViewData["UserName"] = "Ariel Rubio Morales";
+    ViewData["UserRole"] = "Alumno - ISC";
 }
 
 @* ══════════════════════════════════════════════════════════
-   INDEX.CSHTML — Dashboard Principal
+   INDEX.CSHTML — Dashboard Principal (Vista Alumno)
    GMT | Gestor Modular Tecnológico
    ══════════════════════════════════════════════════════════ *@
+
+@* 
+   ===========================================================
+   ¡ATENCIÓN! CAMBIOS A REALIZAR EN Views/Shared/_Layout.cshtml
+   ===========================================================
+   1. HEADER: Busca el tag <i> o <a> que contiene "fa-envelope" o el icono de correo y ELIMÍNALO.
+   2. SIDEBAR: Busca y elimina la etiqueta de texto que dice "SISTEMA" o "Sistema".
+   3. SIDEBAR: Agrega un nuevo enlace de menú llamado "Peticiones".
+   4. SIDEBAR: Agrega un nuevo enlace de menú llamado "Perfil Académico".
+   5. SIDEBAR: Mueve el elemento "Configuración" hacia abajo de los dos nuevos menús.
+   ===========================================================
+*@
 
 @section Styles {
 <style>
@@ -47,7 +59,6 @@
 
     .stat-card.card-blue::before   { background: linear-gradient(90deg, var(--navy), var(--accent)); }
     .stat-card.card-green::before  { background: linear-gradient(90deg, #0d9488, #34d399); }
-    .stat-card.card-amber::before  { background: linear-gradient(90deg, #d97706, #fbbf24); }
     .stat-card.card-purple::before { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
 
     .stat-icon {
@@ -60,7 +71,6 @@
 
     .stat-icon.blue   { background: rgba(0,35,102,.08);  color: var(--navy); }
     .stat-icon.green  { background: rgba(13,148,136,.1);  color: #0d9488; }
-    .stat-icon.amber  { background: rgba(217,119,6,.1);   color: #d97706; }
     .stat-icon.purple { background: rgba(124,58,237,.1);  color: #7c3aed; }
 
     .stat-body { flex: 1; min-width: 0; }
@@ -80,6 +90,12 @@
         color: var(--text-primary);
         line-height: 1;
         letter-spacing: -1px;
+    }
+
+    .stat-value.text-value {
+        font-size: 20px; /* Letra más pequeña para que quepa el nombre de la empresa */
+        letter-spacing: 0;
+        margin-top: 4px;
     }
 
     .stat-footer {
@@ -229,80 +245,27 @@
         border-radius: 50%;
     }
 
-    .pill-pending  { background: #fef3c7; color: #92400e; }
-    .pill-pending::before  { background: #f59e0b; }
-    .pill-active   { background: #dcfce7; color: #166534; }
-    .pill-active::before   { background: #22c55e; }
-    .pill-review   { background: #ede9fe; color: #5b21b6; }
-    .pill-review::before   { background: #8b5cf6; }
-    .pill-approved { background: #dbeafe; color: #1e40af; }
-    .pill-approved::before { background: #3b82f6; }
-    .pill-rejected { background: #fee2e2; color: #991b1b; }
-    .pill-rejected::before { background: #ef4444; }
+    .pill-open     { background: #dcfce7; color: #166534; }
+    .pill-open::before { background: #22c55e; }
+    .pill-closed   { background: #fee2e2; color: #991b1b; }
+    .pill-closed::before { background: #ef4444; }
 
     .module-tag {
         font-size: 11.5px;
-        color: var(--text-muted);
-        background: var(--bg);
-        border: 1px solid var(--border);
-        padding: 3px 9px;
+        padding: 4px 10px;
         border-radius: 6px;
-        font-weight: 500;
+        font-weight: 600;
+        letter-spacing: 0.3px;
     }
 
-    .time-cell {
-        font-size: 12px;
-        color: var(--text-muted);
-        white-space: nowrap;
-        font-family: 'Space Mono', monospace;
+    .type-residencia {
+        background: #1e3a8a;
+        color: #ffffff;
     }
 
-    /* ─── Quick Actions ───────────────────────────────── */
-    .quick-action-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 18px 20px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        cursor: pointer;
-        text-decoration: none;
-        transition: var(--transition);
-        box-shadow: var(--shadow-sm);
-    }
-
-    .quick-action-card:hover {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(74,144,217,.1), var(--shadow-md);
-        transform: translateY(-1px);
-    }
-
-    .qa-icon {
-        width: 42px; height: 42px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 16px;
-        flex-shrink: 0;
-        transition: var(--transition);
-    }
-
-    .quick-action-card:hover .qa-icon {
-        transform: scale(1.1);
-    }
-
-    .qa-text { flex: 1; min-width: 0; }
-
-    .qa-label {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--text-primary);
-    }
-
-    .qa-desc {
-        font-size: 11.5px;
-        color: var(--text-muted);
-        margin-top: 1px;
+    .type-servicio {
+        background: #38bdf8;
+        color: #0f172a;
     }
 
     /* ─── Chart Placeholder ───────────────────────────── */
@@ -317,8 +280,9 @@
     .chart-bars {
         display: flex;
         align-items: flex-end;
+        justify-content: space-between;
         gap: 10px;
-        height: 100px;
+        height: 120px;
         padding-top: 8px;
     }
 
@@ -335,6 +299,7 @@
         gap: 3px;
         align-items: flex-end;
         width: 100%;
+        max-width: 40px;
     }
 
     .c-bar {
@@ -352,6 +317,7 @@
         font-size: 10px;
         color: var(--text-muted);
         font-family: 'Space Mono', monospace;
+        white-space: nowrap;
     }
 
     .chart-legend {
@@ -379,46 +345,40 @@
     .stagger-3 { animation-delay: .15s; }
     .stagger-4 { animation-delay: .20s; }
     .stagger-5 { animation-delay: .25s; }
-    .stagger-6 { animation-delay: .30s; }
 
     /* ─── Responsive ──────────────────────────────────── */
     @@media (max-width: 575.98px) {
         .stat-value { font-size: 24px; }
         .gmt-table thead { display: none; }
         .gmt-table tbody tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--border); }
-        .gmt-table tbody td { display: flex; padding: 5px 16px; }
+        .gmt-table tbody td { display: flex; padding: 5px 16px; align-items: center; }
         .gmt-table tbody td::before {
             content: attr(data-label);
             font-weight: 700;
             color: var(--text-muted);
             font-size: 11px;
-            min-width: 90px;
+            min-width: 120px;
             text-transform: uppercase;
         }
+        .chart-bars { overflow-x: auto; padding-bottom: 10px; }
     }
 </style>
 }
 
 @* ── Datos estáticos (Demo) ── *@
 @{
-    // En producción estos vendrían del Controller / ViewModel
+    // Ajustado a 3 tarjetas como se solicitó
     var stats = new[] {
-        new { Icon = "fas fa-file-alt",         Color = "blue",   Label = "Solicitudes Activas",      Value = "142",   Badge = "+12%",  BadgeType = "up",   BgClass = "card-blue"   },
-        new { Icon = "fas fa-user-graduate",    Color = "green",  Label = "Residencias en Curso",     Value = "57",    Badge = "+5",    BadgeType = "up",   BgClass = "card-green"  },
-        new { Icon = "fas fa-handshake-simple", Color = "amber",  Label = "Servicio Social",          Value = "89",    Badge = "-3%",   BadgeType = "down", BgClass = "card-amber"  },
-        new { Icon = "fas fa-graduation-cap",   Color = "purple", Label = "Titulaciones Pendientes",  Value = "23",    Badge = "+2",    BadgeType = "up",   BgClass = "card-purple" },
+        new { Icon = "fas fa-list-check",       Color = "blue",   Label = "Peticiones activas",                 Value = "142",              ShowBadge = true,  Badge = "+12%",  BadgeType = "up", BgClass = "card-blue",   IsTextValue = false },
+        new { Icon = "fas fa-user-graduate",    Color = "green",  Label = "Residencias en curso",               Value = "Microsoft México", ShowBadge = false, Badge = "",      BadgeType = "",   BgClass = "card-green",  IsTextValue = true  },
+        new { Icon = "fas fa-graduation-cap",   Color = "purple", Label = "Porcentaje de creditos en reticula", Value = "85%",              ShowBadge = false, Badge = "",      BadgeType = "",   BgClass = "card-purple", IsTextValue = false }
     };
 
-    var avatarColors = new[] { "#002366", "#0d9488", "#d97706", "#7c3aed", "#e11d48", "#0284c7" };
-
-    // Tabla de actividad reciente
-    var activity = new[] {
-        new { Initials="JM", Name="Juan Martínez López",    Id="2021A0231", Module="Residencia",   Status="Activo",    StatusClass="pill-active",   Date="Hoy, 10:32", Color="#002366"  },
-        new { Initials="SA", Name="Sofía Aguilar Torres",   Id="2020B0155", Module="Servicio S.",  Status="Pendiente", StatusClass="pill-pending",  Date="Hoy, 09:18", Color="#7c3aed"  },
-        new { Initials="RC", Name="Roberto Castro Díaz",    Id="2019C0088", Module="Titulación",   Status="En Revisión",StatusClass="pill-review",  Date="Ayer, 16:45",Color="#0d9488"  },
-        new { Initials="ML", Name="María López Hernández",  Id="2021A0317", Module="Residencia",   Status="Aprobado",  StatusClass="pill-approved", Date="Ayer, 14:22", Color="#0284c7"  },
-        new { Initials="EV", Name="Eduardo Vargas Ruiz",    Id="2020B0290", Module="Servicio S.",  Status="Pendiente", StatusClass="pill-pending",  Date="Ayer, 11:05", Color="#d97706"  },
-        new { Initials="AL", Name="Ana Lozano Morales",     Id="2022A0041", Module="Titulación",   Status="Rechazado", StatusClass="pill-rejected", Date="19/06, 09:30",Color="#e11d48"  },
+    var requests = new[] {
+        new { Initials="MS", CompanyName="Microsoft México", RFC="MSM010101XX1", Type="Residencias",    TypeClass="type-residencia", Status="Abierta", StatusClass="pill-open",   Applicants=12, Task="Programación", Color="#002366" },
+        new { Initials="ST", CompanyName="Softtek",          RFC="SOF980202YY2", Type="Servicio Social",TypeClass="type-servicio",   Status="Cerrada", StatusClass="pill-closed", Applicants=5,  Task="Soporte Técnico", Color="#0d9488" },
+        new { Initials="IB", CompanyName="IBM Guadalajara",  RFC="IBM120303ZZ3", Type="Residencias",    TypeClass="type-residencia", Status="Abierta", StatusClass="pill-open",   Applicants=8,  Task="Análisis de Datos", Color="#7c3aed" },
+        new { Initials="CX", CompanyName="Cemex",            RFC="CEM450404AA4", Type="Servicio Social",TypeClass="type-servicio",   Status="Abierta", StatusClass="pill-open",   Applicants=2,  Task="Redes y Comunicaciones", Color="#e11d48" },
     };
 }
 
@@ -433,28 +393,32 @@
         <span>Dashboard</span>
     </div>
     <h1 class="page-title">Panel de Control</h1>
-    <p class="page-subtitle">Resumen general del ciclo escolar en curso — Junio 2024</p>
+    <p class="page-subtitle">Resumen general del día de hoy</p>
 </div>
 
 <!-- ── Stat Cards ──────────────────────────────────────────── -->
 <div class="row g-3 mb-4">
     @for (int i = 0; i < stats.Length; i++) {
         var s = stats[i];
-        <div class="col-12 col-sm-6 col-xl-3 fade-up stagger-@(i+1)">
+        <!-- Cambiado a col-md-4 para que las 3 tarjetas ocupen todo el ancho de forma uniforme -->
+        <div class="col-12 col-md-4 fade-up stagger-@(i+1)">
             <div class="stat-card @s.BgClass">
                 <div class="stat-icon @s.Color">
                     <i class="@s.Icon"></i>
                 </div>
                 <div class="stat-body">
                     <div class="stat-label">@s.Label</div>
-                    <div class="stat-value">@s.Value</div>
-                    <div class="stat-footer">
-                        <span class="stat-badge @(s.BadgeType == "up" ? "badge-up" : "badge-down")">
-                            <i class="fas fa-arrow-@(s.BadgeType == "up" ? "up" : "down")"></i>
-                            @s.Badge
-                        </span>
-                        vs. mes anterior
-                    </div>
+                    <div class="stat-value @(s.IsTextValue ? "text-value" : "")">@s.Value</div>
+                    
+                    @if(s.ShowBadge) {
+                        <div class="stat-footer">
+                            <span class="stat-badge @(s.BadgeType == "up" ? "badge-up" : "badge-down")">
+                                <i class="fas fa-arrow-@(s.BadgeType == "up" ? "up" : "down")"></i>
+                                @s.Badge
+                            </span>
+                            vs. mes anterior
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -463,31 +427,35 @@
 
 <!-- ── Main Grid (tabla + gráfica) ───────────────────────── -->
 <div class="row g-3 mb-4">
-
-    <!-- Gráfica de barras (columna izquierda) -->
-    <div class="col-12 col-lg-4 fade-up stagger-3">
+    <div class="col-12 fade-up stagger-4">
         <div class="chart-card h-100">
             <div class="section-header">
-                <span class="section-title" style="font-size:14px;">Solicitudes / Mes</span>
+                <span class="section-title" style="font-size:14px;">Peticiones / Mes</span>
             </div>
 
-            <!-- Mini bar chart (CSS) -->
+            <!-- Gráfica de 12 meses (Abreviaturas en Español) -->
             <div class="chart-bars">
                 @{
                     var months = new[] {
-                        new { Label="Ene", V1=55, V2=40 },
-                        new { Label="Feb", V1=68, V2=50 },
-                        new { Label="Mar", V1=45, V2=60 },
-                        new { Label="Abr", V1=72, V2=55 },
-                        new { Label="May", V1=88, V2=70 },
-                        new { Label="Jun", V1=100, V2=85 },
+                        new { Label="Jun 25", V1=45, V2=30 },
+                        new { Label="Jul 25", V1=30, V2=40 },
+                        new { Label="Ago 25", V1=80, V2=60 },
+                        new { Label="Sep 25", V1=65, V2=50 },
+                        new { Label="Oct 25", V1=55, V2=45 },
+                        new { Label="Nov 25", V1=40, V2=35 },
+                        new { Label="Dic 25", V1=20, V2=25 },
+                        new { Label="Ene 26", V1=55, V2=40 },
+                        new { Label="Feb 26", V1=68, V2=50 },
+                        new { Label="Mar 26", V1=45, V2=60 },
+                        new { Label="Abr 26", V1=72, V2=55 },
+                        new { Label="May 26", V1=88, V2=70 },
                     };
                 }
                 @foreach (var m in months) {
                     <div class="chart-bar-group">
                         <div class="chart-bars-inner">
                             <div class="c-bar navy" style="height:@(m.V1)px;" title="Residencias: @m.V1"></div>
-                            <div class="c-bar blue"  style="height:@(m.V2)px;" title="Serv. Social: @m.V2"></div>
+                            <div class="c-bar blue"  style="height:@(m.V2)px;" title="Servicio Social: @m.V2"></div>
                         </div>
                         <span class="chart-label">@m.Label</span>
                     </div>
@@ -506,46 +474,12 @@
             </div>
         </div>
     </div>
-
-    <!-- Acciones rápidas -->
-    <div class="col-12 col-lg-8 fade-up stagger-4">
-        <div class="mb-3">
-            <div class="section-header">
-                <span class="section-title" style="font-size:14px;">Acciones Rápidas</span>
-            </div>
-            <div class="row g-2">
-                @{
-                    var actions = new[] {
-                        new { Icon="fas fa-plus-circle",     BgColor="rgba(0,35,102,.08)",   TextColor="var(--navy)",   Label="Nueva Solicitud",          Desc="Crear expediente" },
-                        new { Icon="fas fa-search",          BgColor="rgba(13,148,136,.1)",  TextColor="#0d9488",       Label="Buscar Alumno",             Desc="Localizar por matrícula" },
-                        new { Icon="fas fa-file-export",     BgColor="rgba(217,119,6,.1)",   TextColor="#d97706",       Label="Exportar Reporte",          Desc="Excel / PDF" },
-                        new { Icon="fas fa-calendar-check",  BgColor="rgba(124,58,237,.1)",  TextColor="#7c3aed",       Label="Agendar Revisión",          Desc="Calendario de citas" },
-                    };
-                }
-                @foreach (var a in actions) {
-                    <div class="col-6">
-                        <a href="#" class="quick-action-card">
-                            <div class="qa-icon" style="background:@a.BgColor; color:@a.TextColor;">
-                                <i class="@a.Icon"></i>
-                            </div>
-                            <div class="qa-text">
-                                <div class="qa-label">@a.Label</div>
-                                <div class="qa-desc">@a.Desc</div>
-                            </div>
-                            <i class="fas fa-arrow-right" style="color:var(--border); font-size:11px;"></i>
-                        </a>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-
 </div>
 
-<!-- ── Tabla de Actividad Reciente ────────────────────────── -->
+<!-- ── Tabla de Peticiones Recientes ────────────────────────── -->
 <div class="fade-up stagger-5">
     <div class="section-header">
-        <span class="section-title">Actividad Reciente</span>
+        <span class="section-title">Peticiones Recientes</span>
         <a href="#" class="btn-view-all">
             Ver todo <i class="fas fa-arrow-right"></i>
         </a>
@@ -556,43 +490,38 @@
             <table class="gmt-table">
                 <thead>
                     <tr>
-                        <th>Alumno</th>
-                        <th>Módulo</th>
+                        <th>Empresa</th>
+                        <th>Tipo de Petición</th>
+                        <th style="text-align:center;">Aplicantes</th>
                         <th>Estado</th>
-                        <th>Fecha</th>
-                        <th style="text-align:center;">Acción</th>
+                        <th>Tareas</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var row in activity) {
+                    @foreach (var row in requests) {
                         <tr>
-                            <td data-label="Alumno">
+                            <td data-label="Empresa">
                                 <div class="student-cell">
                                     <div class="student-avatar" style="background:@row.Color;">@row.Initials</div>
                                     <div>
-                                        <div class="student-name">@row.Name</div>
-                                        <div class="student-id">@row.Id</div>
+                                        <div class="student-name">@row.CompanyName</div>
+                                        <div class="student-id">@row.RFC</div>
                                     </div>
                                 </div>
                             </td>
-                            <td data-label="Módulo">
-                                <span class="module-tag">@row.Module</span>
+                            <td data-label="Tipo de Petición">
+                                <span class="module-tag @row.TypeClass">@row.Type</span>
+                            </td>
+                            <td data-label="Aplicantes" style="text-align:center; font-weight:700; color:var(--navy);">
+                                @row.Applicants
                             </td>
                             <td data-label="Estado">
                                 <span class="status-pill @row.StatusClass">@row.Status</span>
                             </td>
-                            <td data-label="Fecha">
-                                <span class="time-cell"><i class="fas fa-clock me-1" style="opacity:.5;"></i>@row.Date</span>
-                            </td>
-                            <td data-label="Acción" style="text-align:center;">
-                                <button class="btn btn-sm"
-                                        style="background:var(--bg); border:1px solid var(--border);
-                                               color:var(--text-secondary); font-size:11.5px; font-weight:600;
-                                               padding:4px 12px; border-radius:6px; transition:var(--transition);"
-                                        onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)';"
-                                        onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text-secondary)';">
-                                    Ver detalle
-                                </button>
+                            <td data-label="Tareas">
+                                <span style="font-size:13px; font-weight:500; color:var(--text-secondary);">
+                                    <i class="fas fa-clipboard-check me-1" style="color:var(--accent);"></i> @row.Task
+                                </span>
                             </td>
                         </tr>
                     }
@@ -604,10 +533,10 @@
         <div style="padding: 14px 20px; background:var(--bg); border-top:1px solid var(--border);
                     display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
             <span style="font-size:12px; color:var(--text-muted);">
-                Mostrando <strong>@activity.Length</strong> de <strong>142</strong> registros
+                Mostrando <strong>@requests.Length</strong> de <strong>45</strong> peticiones
             </span>
             <div style="display:flex; gap:4px;">
-                @for (int p = 1; p <= 5; p++) {
+                @for (int p = 1; p <= 3; p++) {
                     <button class="btn btn-sm"
                             style="min-width:30px; height:30px; padding:0; font-size:12px; font-weight:600;
                                    border-radius:6px; border:1px solid @(p==1 ? "var(--accent)" : "var(--border)");
@@ -635,7 +564,7 @@
         bars.forEach((bar, i) => {
             const finalH = bar.style.height;
             bar.style.height = '0px';
-            bar.style.transition = `height .5s cubic-bezier(.4,0,.2,1) ${i * 30}ms`;
+            bar.style.transition = `height .5s cubic-bezier(.4,0,.2,1) ${i * 15}ms`;
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => { bar.style.height = finalH; });
             });

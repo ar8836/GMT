@@ -45,7 +45,7 @@ namespace GMT.Controllers
                 return View("RegistrationFailed");
             }
 
-            return RedirectToAction("RegistrationSuccess", "EmpresaAuth");
+            return RedirectToAction("RegistrationSuccess", "Account");
         }
 
         /// <summary>

@@ -48,7 +48,8 @@ namespace GMT.Services
                     CorreoInstitucional = correo,
                     PasswordHash = passwordHash,
                     IntentosFallidos = 0,
-                    UltimoAcceso = null
+                    UltimoAcceso = null,
+                    EstaVerificado = true
                 };
                 _context.Logins.Add(login);
                 await _context.SaveChangesAsync();
@@ -68,9 +69,19 @@ namespace GMT.Services
                     _context.Empresas.Add(empresa);
                     await _context.SaveChangesAsync();
                 }
-                else
+                else if (string.Equals(tipo, "Alumno", StringComparison.OrdinalIgnoreCase))
                 {
-                    // TODO: crear alumno si aplica (usar modelo Alumno)
+                    // Insertar en la tabla Alumnos
+                    var alumno = new Alumno
+                    {
+                        LoginId = login.Id,
+                        NombreCompleto = root.TryGetProperty("NombreCompleto", out var nc) ? nc.GetString() : null,
+                        Semestre = root.TryGetProperty("Semestre", out var sem) && sem.TryGetInt32(out var semestre) ? semestre : 0,
+                        NumeroControl = root.TryGetProperty("Matricula", out var mat) ? mat.GetString() : null,
+                        Carrera = root.TryGetProperty("Carrera", out var car) ? car.GetString() : null
+                    };
+                    _context.Alumnos.Add(alumno);
+                    await _context.SaveChangesAsync();
                 }
 
                 // Eliminar preregistro
@@ -82,8 +93,12 @@ namespace GMT.Services
                 // Envío de bienvenida (no crítico para la transacción)
                 try
                 {
-                    var displayName = root.TryGetProperty("NombreEmpresa", out var n) ? n.GetString() ?? correo : correo;
-                    await _emailService.SendWelcomeEmailAsync(correo, displayName);
+                    // Intenta obtener el nombre del alumno, si no el de la empresa, y por último el correo
+                    var displayName = root.TryGetProperty("NombreCompleto", out var n) ? n.GetString()
+                                      : (root.TryGetProperty("NombreEmpresa", out var ne) ? ne.GetString() : null);
+
+                    // Si displayName es null, usa el correo como valor predeterminado para evitar null
+                    await _emailService.SendWelcomeEmailAsync(correo, displayName ?? correo);
                 }
                 catch
                 {
@@ -94,6 +109,7 @@ namespace GMT.Services
             }
             catch
             {
+                // Aquí podrías agregar un _logger.LogError(ex, "Mensaje") si inyectas ILogger
                 return false;
             }
         }

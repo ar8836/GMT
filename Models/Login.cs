@@ -21,5 +21,8 @@ namespace GMT.Models
 
         [Column("ultimo_acceso")]
         public DateTime? UltimoAcceso { get; set; }
+
+        [Column("es_verificado")]
+        public bool EstaVerificado { get; set; } = false;
     }
 }

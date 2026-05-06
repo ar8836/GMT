@@ -11,7 +11,7 @@ namespace GMT.Models
         [DataType(DataType.Password)]
         public string Password { get; set; } = string.Empty;
 
-        public bool RememberMe { get; set; }
+        public bool RecordarCredenciales { get; set; }
 
         // Alumno Registration
         public string NombreCompleto { get; set; } = string.Empty;

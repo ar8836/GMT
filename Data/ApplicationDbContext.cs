@@ -10,6 +10,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Alumno> Alumnos { get; set; }
     public DbSet<Empresa> Empresas { get; set; }
     public DbSet<RegistroPendiente> RegistrosPendientes { get; set; }
+    public DbSet<DocumentoAlumno> DocumentosAlumno { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

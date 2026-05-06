@@ -193,6 +193,10 @@
                     <!-- Login Form -->
                     <div id="loginForm" class="form-section active">
                         <form asp-action="Login" asp-controller="Account" method="post">
+                            @Html.AntiForgeryToken()
+                            <!-- Campo oculto vital para que el controlador sepa la tabla -->
+                            <input type="hidden" name="TipoRegistro" id="login-tipo" value="Alumno" />
+                            
                             <div class="mb-3">
                                 <label asp-for="Email" class="form-label text-white-50"></label>
                                 <input asp-for="Email" class="form-control" placeholder="Correo electrónico" />
@@ -204,8 +208,8 @@
                                 <span asp-validation-for="Password" class="text-danger"></span>
                             </div>
                             <div class="mb-3 form-check d-flex align-items-center gap-2" style="padding-left: 0;">
-                                <input asp-for="RememberMe" type="checkbox" class="form-check-input" style="width: 18px; height: 18px; margin: 0;" />
-                                <label asp-for="RememberMe" class="form-check-label text-white-50 mb-0" style="cursor: pointer;"></label>
+                                <input asp-for="RecordarCredenciales" type="checkbox" class="form-check-input" style="width: 18px; height: 18px; margin: 0;" />
+                                <label asp-for="RecordarCredenciales" class="form-check-label text-white-50 mb-0" style="cursor: pointer;"></label>
                             </div>
                             <button type="submit" class="btn btn-gradient mb-4">
                                 <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
@@ -219,6 +223,7 @@
                     <!-- Alumno Register Form -->
                     <div id="registerAlumnoForm" class="form-section">
                         <form asp-action="Register" asp-controller="Account" method="post">
+                            <input type="hidden" name="TipoRegistro" value="Alumno" />
                             <div class="mb-3">
                                 <label asp-for="NombreCompleto" class="form-label text-white-50"></label>
                                 <input asp-for="NombreCompleto" class="form-control" placeholder="Nombre Completo" />
@@ -251,7 +256,9 @@
 
                     <!-- Empresa Register Form -->
                     <div id="registerEmpresaForm" class="form-section">
-                        <form asp-action="Register" asp-controller="EmpresaAuth" method="post">
+                        <!-- Corregido a asp-controller="Account" -->
+                        <form asp-action="Register" asp-controller="Account" method="post">
+                            <input type="hidden" name="TipoRegistro" value="Empresa" />
                             <div class="mb-3">
                                 <label asp-for="NombreEmpresa" class="form-label text-white-50"></label>
                                 <input asp-for="NombreEmpresa" class="form-control" placeholder="Nombre de la Empresa" />
@@ -298,6 +305,13 @@
                 $('.profile-card').removeClass('active');
                 $(this).addClass('active');
                 const profile = $(this).data('profile');
+                
+                // --- ACTUALIZACIÓN DE LÓGICA DE LOGIN ---
+                // Se actualiza el campo oculto del form de Login dependiendo del perfil
+                const tipoRegistroBackend = profile === 'alumno' ? 'Alumno' : 'Empresa';
+                $('#login-tipo').val(tipoRegistroBackend);
+                // ----------------------------------------
+
                 if (profile === 'alumno') {
                     $('#registerEmpresaForm').removeClass('active');
                     if ($('.toggle-option[data-form="register"]').hasClass('active')) {
