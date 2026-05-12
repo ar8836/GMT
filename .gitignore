@@ -488,12 +488,12 @@ appsettings.Development.json
 
 arbol.txt
 
-aws-beanstalk-tools-defaults
-
-CLAUDE.md
+aws-beanstalk-tools-defaults.json
 
 Jira.csv
 
 SPRINT-2.md
 
-temp_jira_filtered
+temp_jira_filtered.csv
+
+.claude
