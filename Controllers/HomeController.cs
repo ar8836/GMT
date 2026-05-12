@@ -4,9 +4,6 @@ namespace GMT.Controllers
 {
     public class HomeController : Controller
     {
-        public IActionResult Index()
-        {
-            return View();
-        }
+        public IActionResult Landing() => View();
     }
 }

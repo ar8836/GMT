@@ -485,3 +485,15 @@ $RECYCLE.BIN/
 
 # No incluir appsettings.Development.json para evitar filtrar datos sensibles como cadenas de conexión a bases de datos, claves de API, etc.
 appsettings.Development.json
+
+arbol.txt
+
+aws-beanstalk-tools-defaults
+
+CLAUDE.md
+
+Jira.csv
+
+SPRINT-2.md
+
+temp_jira_filtered

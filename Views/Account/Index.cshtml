@@ -342,6 +342,26 @@
                     }
                 }
             });
+
+            // ── Auto-selección desde la landing (query params) ──────────
+            // La landing pasa: ?perfil=alumno|empresa  &  modo=login|register
+            // Se simulan los clicks internos para respetar toda la lógica existente.
+            const params = new URLSearchParams(window.location.search);
+            const perfil = params.get('perfil');   // 'alumno' | 'empresa'
+            const modo   = params.get('modo');     // 'login'  | 'register'
+
+            // 1. Seleccionar perfil primero (para que el toggle de modo
+            //    sepa qué formulario de registro mostrar)
+            if (perfil === 'empresa') {
+                $('[data-profile="empresa"]').trigger('click');
+            }
+            // Si es 'alumno' (o no viene el param), ya está seleccionado por defecto
+
+            // 2. Seleccionar modo (login o registro)
+            if (modo === 'register') {
+                $('[data-form="register"]').trigger('click');
+            }
+            // Si es 'login' (o no viene el param), ya está seleccionado por defecto
         });
     </script>
 </body>
