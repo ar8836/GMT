@@ -1,3 +1,4 @@
+using GMT.Data;
 using GMT.Models;
 using GMT.Services;
 using Microsoft.AspNetCore.Http;
@@ -38,7 +39,7 @@ namespace GMT.Controllers
                 if (!allowedExtensions.Contains(extension))
                     return BadRequest("Only JPG, JPEG and PNG files are allowed");
 
-                if (file.Length > 2 * 1024 * 1024) // 2MB
+                if (file.Length > 2 * 1024 * 1024)
                     return BadRequest("File size exceeds 2MB limit");
 
                 var alumno = await _context.Alumnos
@@ -48,40 +49,28 @@ namespace GMT.Controllers
                 if (alumno == null)
                     return NotFound($"Alumno with ID {id} not found");
 
-                // Generate unique key for S3
                 string key = $"{Guid.NewGuid():N}{Path.GetExtension(file.FileName)}";
-
-                // Upload file to S3 using public method
                 string uploadedKey = await _s3Service.UploadFileAsync(file, key);
-
-                // Get pre‑signed URL
                 string fileUrl = await _s3Service.GetFileUrlAsync(uploadedKey, 24);
 
-                // Update FotoPerfilUrl in database
                 alumno.FotoPerfilUrl = fileUrl;
                 await _context.SaveChangesAsync();
 
-                // Send welcome email (using existing EmailService)
                 string? studentEmail = alumno.Login?.CorreoInstitucional;
                 if (!string.IsNullOrEmpty(studentEmail))
                 {
                     await _emailService.SendWelcomeEmailAsync(
                         studentEmail,
-                        alumno.NombreCompleto ?? "Estudiante"
-                    );
+                        alumno.NombreCompleto ?? "Estudiante");
                 }
 
                 return Ok(new { message = "Foto de perfil actualizada exitosamente", url = fileUrl });
             }
             catch (Exception ex)
             {
-                // Imprimimos el error completo en tu terminal de dotnet watch run
-                Console.WriteLine("\n================= FATAL ERROR =================");
-                Console.WriteLine($"Tipo: {ex.GetType().Name}");
-                Console.WriteLine($"Mensaje: {ex.Message}");
+                Console.WriteLine($"\n[UploadController] ERROR: {ex.GetType().Name} — {ex.Message}");
                 if (ex.InnerException != null)
-                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                Console.WriteLine("===============================================\n");
+                    Console.WriteLine($"  Inner: {ex.InnerException.Message}");
 
                 return StatusCode(500, new
                 {

@@ -1,4 +1,5 @@
-﻿using GMT.Models;
+﻿using GMT.Data;
+using GMT.Models;
 using GMT.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +7,6 @@ using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using BCrypt.Net;
 
 namespace GMT.Controllers
 {
@@ -26,66 +26,55 @@ namespace GMT.Controllers
         [HttpGet]
         public IActionResult Index() => View();
 
-        // --- LÓGICA DE LOGIN (POST) ---[cite: 13, 14]
+        // ── LOGIN ─────────────────────────────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(string Email, string Password, string TipoRegistro)
         {
             try
             {
-                // 1. Buscar al usuario en la tabla de Logins[cite: 13, 16]
                 var loginUsuario = await _context.Logins
                     .FirstOrDefaultAsync(l => l.CorreoInstitucional == Email);
 
                 if (loginUsuario == null)
                 {
-                    _logger.LogWarning("Intento de acceso fallido: Correo no encontrado {Email}", Email);
+                    _logger.LogWarning("Acceso fallido: correo no encontrado {Email}", Email);
                     ModelState.AddModelError("", "Correo o contraseña incorrectos.");
                     return View("Index");
                 }
 
-                // 2. Verificar contraseña con BCrypt[cite: 13, 16]
                 bool passwordValido = BCrypt.Net.BCrypt.Verify(Password, loginUsuario.PasswordHash);
-
                 if (!passwordValido)
                 {
-                    _logger.LogWarning("Intento de acceso fallido: Contraseña incorrecta para {Email}", Email);
+                    _logger.LogWarning("Acceso fallido: contraseña incorrecta para {Email}", Email);
                     ModelState.AddModelError("", "Correo o contraseña incorrectos.");
                     return View("Index");
                 }
 
-                // 3. (Opcional) Verificar si el usuario ya confirmó su correo[cite: 12]
-                // if (!loginUsuario.EstaVerificado) return RedirectToAction("PendingVerification");
+                // Usar el rol guardado en DB como fuente de verdad
+                var rolReal = loginUsuario.Rol; // 'alumno' | 'empresa' | 'admin'
 
-                // 4. Crear la identidad del usuario (Claims) para la sesión
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, Email),
-                    new Claim("UserType", TipoRegistro) // Guardamos si es Alumno o Empresa
+                    new Claim(ClaimTypes.Role, rolReal),
+                    new Claim("UserType", TipoRegistro)
                 };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-
                 await HttpContext.SignInAsync(
                     CookieAuthenticationDefaults.AuthenticationScheme,
                     new ClaimsPrincipal(claimsIdentity));
 
-                _logger.LogInformation("Usuario {Email} inició sesión como {Tipo}", Email, TipoRegistro);
+                _logger.LogInformation("Usuario {Email} inició sesión ({Rol})", Email, rolReal);
 
-                // 5. REDIRECCIONAMIENTO CORRECTO[cite: 13, 15]
-                // Si es Alumno, va a Dashboard/Alumno. Si es Empresa, a Dashboard/Empresa.
-                if (TipoRegistro == "Alumno")
-                {
-                    return RedirectToAction("Alumno", "Dashboard");
-                }
-                else
-                {
-                    return RedirectToAction("Empresa", "Dashboard");
-                }
+                return rolReal == "empresa"
+                    ? RedirectToAction("Empresa", "Dashboard")
+                    : RedirectToAction("Alumno", "Dashboard");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error durante el proceso de Login");
+                _logger.LogError(ex, "Error durante Login");
                 ModelState.AddModelError("", "Ocurrió un error inesperado. Inténtalo de nuevo.");
                 return View("Index");
             }
@@ -98,34 +87,51 @@ namespace GMT.Controllers
             return RedirectToAction("Index", "Account");
         }
 
-        // --- LÓGICA DE REGISTRO ---[cite: 16]
         [HttpGet]
         public IActionResult PendingVerification() => View();
 
         [HttpGet]
         public IActionResult RegistrationSuccess() => View();
 
+        // ── REGISTRO ──────────────────────────────────────────────────────────
         [HttpPost("Account/Register")]
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Register(
             string TipoRegistro, string Email, string Password,
-            string? NombreCompleto, string? Institucion, string? Matricula, string? Carrera,
-            int? Semestre, string? NombreEmpresa, string? RFC, string? Sector)
+            // Alumno
+            string? NombreCompleto, string? Matricula, string? Carrera,
+            int? Semestre, string? Telefono,
+            // Empresa
+            string? NombreEmpresa, string? RazonSocial, string? RFC,
+            string? Sector, string? Giro, string? Ciudad,
+            string? NombreContacto, string? PuestoContacto, string? TelefonoContacto)
         {
             try
             {
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(Password);
 
+                // Serializar TODOS los datos que VerificationService necesita al confirmar
                 var datosRegistro = new
                 {
                     CorreoElectronico = Email,
                     PasswordHash = passwordHash,
-                    TipoRegistro = TipoRegistro,
+                    TipoRegistro,
+                    // Alumno
                     NombreCompleto,
-                    Institucion,
                     Matricula,
                     Carrera,
-                    Semestre = Semestre ?? 1
+                    Semestre,
+                    Telefono,
+                    // Empresa
+                    NombreEmpresa,
+                    RazonSocial,
+                    RFC,
+                    Sector,
+                    Giro,
+                    Ciudad,
+                    NombreContacto,
+                    PuestoContacto,
+                    TelefonoContacto
                 };
 
                 var registroPendiente = new RegistroPendiente
@@ -134,7 +140,7 @@ namespace GMT.Controllers
                     Email = Email,
                     TipoRegistro = TipoRegistro,
                     DatosJson = JsonSerializer.Serialize(datosRegistro),
-                    ExpiresAt = DateTime.UtcNow.AddHours(24)
+                    ExpiresAt = DateTimeOffset.UtcNow.AddHours(24)
                 };
 
                 _context.RegistrosPendientes.Add(registroPendiente);
@@ -149,7 +155,7 @@ namespace GMT.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error en el registro de usuario");
+                _logger.LogError(ex, "Error en registro de usuario");
                 return View("Index");
             }
         }
