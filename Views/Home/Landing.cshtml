@@ -6,7 +6,7 @@
 <html lang="es">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="description" content="GMT digitaliza los trámites de servicio social, residencias profesionales y titulación del TecNM Campus Acapulco. Conecta estudiantes con empresas en minutos." />
     <meta name="keywords" content="residencias profesionales, servicio social, titulación, TecNM, Acapulco, prácticas profesionales" />
     <title>@ViewData["Title"]</title>
@@ -59,6 +59,8 @@
             color: var(--text-primary);
             line-height: 1.7;
             overflow-x: hidden;
+            width: 100%;
+            position: relative;
         }
 
         h1, h2, h3, h4, h5 { font-family: 'Sora', sans-serif; }
@@ -790,10 +792,70 @@
         /* ════════════════════════════════════════════════
            RESPONSIVE
         ════════════════════════════════════════════════ */
+
+        /* Bloquear scroll horizontal y zoom no deseado globalmente */
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        /* Los orbs no deben causar overflow en mobile */
+        .hero-orb { overflow: hidden; }
+        .orb-1 { right: -80px; width: 280px; height: 280px; }
+        .orb-2 { left: -60px;  width: 220px; height: 220px; }
+
         @@media (max-width: 991.98px) {
             .hero { padding: 6rem 0 4rem; }
             .hero-mockup { margin-top: 3rem; }
             .gmt-nav { padding: .9rem 1.25rem; }
+            /* Animación flotante desactivada en tablet/mobile para evitar overflow */
+            .mockup-card { animation: none; }
+        }
+
+        @@media (max-width: 767.98px) {
+            /* Orbs completamente ocultos en mobile — son los causantes del scroll lateral */
+            .hero-orb { display: none; }
+
+            /* Hero title más compacto */
+            .hero-title { font-size: clamp(1.8rem, 7vw, 2.6rem); }
+            .hero-subtitle { font-size: .95rem; }
+
+            /* Botones del hero en columna en pantallas muy pequeñas */
+            .hero-actions { flex-direction: column; align-items: stretch; }
+            .hero-actions .btn-grad,
+            .hero-actions .btn-grad-empresa { justify-content: center; width: 100%; }
+
+            /* Step cards sin transform lateral */
+            .step-card:hover { transform: none; }
+
+            /* Social proof en columna */
+            .social-proof { flex-direction: column; gap: .75rem; }
+
+            /* Navbar ajustado */
+            .gmt-nav { padding: .75rem 1rem; }
+
+            /* Sección de stats más compacta */
+            .stats-bar { padding: 1.5rem 0; }
+            .stat-number { font-size: 1.7rem; }
+
+            /* Cards en sección about */
+            .about-card { padding: 1.75rem 1.25rem; }
+
+            /* CTA */
+            .cta-card { padding: 2.5rem 1.25rem; }
+            .cta-card .d-flex { flex-direction: column; align-items: stretch; }
+            .cta-card .btn-grad,
+            .cta-card .btn-grad-empresa { justify-content: center; }
+
+            /* Footer */
+            .footer-bottom { justify-content: center; text-align: center; }
+            .footer-legal { flex-wrap: wrap; justify-content: center; }
+
+            /* Feature cards sin hover transform en mobile (táctil) */
+            .feature-card:hover { transform: none; }
+
+            /* Tech badges wrap */
+            .tech-badge { font-size: .78rem; padding: .5rem .85rem; }
         }
 
         @@media (max-width: 575.98px) {
@@ -801,6 +863,8 @@
             .cta-card { padding: 3rem 1.5rem; }
             .footer-bottom { justify-content: center; text-align: center; }
             .footer-legal { flex-wrap: wrap; justify-content: center; }
+            /* Dot-grid puede causar ancho extra en móvil muy pequeño */
+            body::after { background-size: 24px 24px; }
         }
     </style>
 </head>
