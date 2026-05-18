@@ -18,43 +18,44 @@ namespace GMT.Controllers
         }
 
         /// <summary>
-        /// GET: /Verification/Verify?token=xxx - Valida el token y promociona el registro
+        /// GET: /Verification/Verify?token=xxx
+        /// Valida el token y promociona el registro pendiente a login+alumno/empresa.
         /// </summary>
         [HttpGet("verify")]
         public async Task<IActionResult> Verify(string token)
         {
             if (string.IsNullOrWhiteSpace(token) || !Guid.TryParse(token, out var tokenGuid))
             {
-                ViewBag.Message = "Token de verificación inválido.";
-                return View("RegistrationFailed");
+                ViewBag.Message = "El enlace de verificación no es válido.";
+                // Ruta absoluta — la vista vive en Views/Account/, no en Views/Verification/
+                return View("~/Views/Account/RegistrationFailed.cshtml");
             }
 
-            // Obtener registro pendiente activo
             var registro = await _verificationService.ObtenerRegistroPendienteActivoAsync(tokenGuid);
             if (registro == null)
             {
-                ViewBag.Message = "El token ha expirado o no existe. Regístrese nuevamente.";
-                return View("RegistrationFailed");
+                ViewBag.Message = "El enlace ha expirado o ya fue utilizado. Por favor regístrate nuevamente.";
+                return View("~/Views/Account/RegistrationFailed.cshtml");
             }
 
-            // Confirmar y promocionar el registro
             var success = await _verificationService.ConfirmarRegistroAsync(tokenGuid);
             if (!success)
             {
-                ViewBag.Message = "Error al procesar la verificación. Intente nuevamente.";
-                return View("RegistrationFailed");
+                ViewBag.Message = "Ocurrió un error al procesar tu verificación. Inténtalo de nuevo.";
+                return View("~/Views/Account/RegistrationFailed.cshtml");
             }
 
             return RedirectToAction("RegistrationSuccess", "Account");
         }
 
         /// <summary>
-        /// GET: /Verification/RegistrationFailed - Página de error de verificación
+        /// GET: /Verification/RegistrationFailed
+        /// Pantalla de error accesible directamente si se necesita.
         /// </summary>
         [HttpGet("verify/failed")]
         public IActionResult RegistrationFailed()
         {
-            return View();
+            return View("~/Views/Account/RegistrationFailed.cshtml");
         }
     }
 }

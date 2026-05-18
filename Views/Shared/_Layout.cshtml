@@ -1,8 +1,10 @@
 ﻿@{
     string activeModule = ViewData["ActiveModule"]?.ToString() ?? "dashboard";
-    string userName = ViewData["UserName"]?.ToString() ?? "Admin Usuario";
-    string userRole = ViewData["UserRole"]?.ToString() ?? "Coordinador TI";
-    string userInitials = string.Join("", userName.Split(' ').Take(2).Select(s => s[0].ToString().ToUpper()));
+    string userName     = ViewData["UserName"]?.ToString()     ?? "Usuario";
+    string userRole     = ViewData["UserRole"]?.ToString()     ?? "GMT";
+    string portalTipo   = ViewData["PortalTipo"]?.ToString()   ?? "alumno";
+    string userInitials = string.Join("", userName.Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString().ToUpper() : ""));
+    bool   esEmpresa    = portalTipo == "empresa";
 }
 <!DOCTYPE html>
 <html lang="es">
@@ -11,11 +13,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GMT — @ViewData["Title"]</title>
 
-    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <!-- Font Awesome 6 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" />
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 
     <style>
@@ -24,6 +23,10 @@
             --navy-dark:     #001540;
             --accent:        #4a90d9;
             --accent-bright: #5ba3f5;
+            /* Empresa usa violeta para distinguirse visualmente */
+            --emp-primary:   #4c1d95;
+            --emp-accent:    #7c3aed;
+            --emp-bright:    #a78bfa;
             --bg:            #f0f3f8;
             --bg-card:       #ffffff;
             --sidebar-w:     260px;
@@ -33,6 +36,7 @@
             --text-muted:    #8492a6;
             --border:        #e2e8f0;
             --shadow-sm:     0 1px 3px rgba(0,35,102,.07);
+            --shadow-md:     0 4px 16px rgba(0,35,102,.10);
             --radius:        12px;
             --radius-sm:     8px;
             --transition:    all .22s cubic-bezier(.4,0,.2,1);
@@ -46,13 +50,13 @@
             overflow-x: hidden;
         }
 
-        /* Sidebar Styles */
+        /* ─── Sidebar ──────────────────────────────────────── */
         .gmt-sidebar {
             width: var(--sidebar-w);
             height: 100vh;
             position: fixed;
             top: 0; left: 0;
-            background: var(--navy-dark);
+            background: @(esEmpresa ? "var(--emp-primary)" : "var(--navy-dark)");
             display: flex;
             flex-direction: column;
             z-index: 1000;
@@ -69,16 +73,17 @@
 
         .brand-icon {
             width: 38px; height: 38px;
-            background: var(--accent);
+            background: @(esEmpresa ? "var(--emp-accent)" : "var(--accent)");
             border-radius: var(--radius-sm);
             display: flex; align-items: center; justify-content: center;
             font-size: 20px;
         }
 
         .brand-name { font-weight: 800; font-size: 20px; letter-spacing: 1px; }
-        .brand-sub { display: block; font-size: 10px; opacity: .6; text-transform: uppercase; }
+        .brand-sub  { display: block; font-size: 10px; opacity: .6; text-transform: uppercase; }
 
         .sidebar-nav { flex: 1; padding: 0 12px; overflow-y: auto; }
+
         .nav-section-label {
             padding: 20px 16px 8px;
             font-size: 11px;
@@ -100,25 +105,14 @@
             margin-bottom: 4px;
         }
 
-        .nav-link-gmt:hover, .nav-link-gmt.active {
-            background: rgba(255,255,255,.08);
+        .nav-link-gmt:hover { background: rgba(255,255,255,.08); color: #fff; }
+
+        .nav-link-gmt.active {
+            background: @(esEmpresa ? "var(--emp-accent)" : "var(--accent)");
             color: #fff;
         }
 
-        .nav-link-gmt.active { background: var(--accent); }
-
         .nav-icon { width: 20px; text-align: center; font-size: 16px; }
-
-        .nav-collapse { padding-left: 12px; margin-bottom: 10px; }
-        .nav-sub-link {
-            display: block;
-            padding: 8px 16px 8px 32px;
-            color: rgba(255,255,255,.5);
-            text-decoration: none;
-            font-size: 13px;
-            transition: var(--transition);
-        }
-        .nav-sub-link:hover { color: #fff; }
 
         .nav-badge {
             margin-left: auto;
@@ -130,7 +124,22 @@
             font-weight: 700;
         }
 
-        /* Navbar Styles */
+        .nav-badge-violet {
+            margin-left: auto;
+            background: var(--emp-accent);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,.08);
+        }
+
+        /* ─── Navbar ──────────────────────────────────────── */
         .gmt-navbar {
             position: fixed;
             top: 0; left: var(--sidebar-w); right: 0;
@@ -151,22 +160,28 @@
             border: none;
             border-radius: 20px;
             font-size: 13px;
+            outline: none;
         }
         .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
 
         .navbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
         .action-btn {
             width: 38px; height: 38px;
             border-radius: 50%;
             border: none; background: transparent;
             color: var(--text-secondary);
             position: relative;
+            cursor: pointer;
         }
         .action-btn:hover { background: var(--bg); }
+
         .notif-dot {
             position: absolute; top: 10px; right: 10px;
-            width: 8px; height: 8px; background: #e74c3c;
-            border: 2px solid #fff; border-radius: 50%;
+            width: 8px; height: 8px;
+            background: #e74c3c;
+            border: 2px solid #fff;
+            border-radius: 50%;
         }
 
         .profile-area {
@@ -174,15 +189,43 @@
             padding: 6px 12px; border-radius: 30px; cursor: pointer;
         }
         .profile-area:hover { background: var(--bg); }
+
         .user-avatar {
-            width: 32px; height: 32px; background: var(--navy);
+            width: 32px; height: 32px;
+            background: @(esEmpresa ? "var(--emp-accent)" : "var(--navy)");
             color: #fff; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-weight: 700; font-size: 12px;
         }
 
+        /* ─── Portal badge (navbar) ───────────────────────── */
+        .portal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-right: 8px;
+        }
+
+        .portal-badge.alumno  { background: rgba(0,35,102,.08); color: var(--navy); }
+        .portal-badge.empresa { background: rgba(124,58,237,.1); color: var(--emp-accent); }
+
+        /* ─── Main ────────────────────────────────────────── */
         .gmt-main { margin-left: var(--sidebar-w); margin-top: var(--navbar-h); padding: 30px; }
 
+        /* ─── Logout form ─────────────────────────────────── */
+        .logout-btn {
+            background: none; border: none; padding: 0;
+            color: rgba(255,255,255,.5); font-size: 13px;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            width: 100%; text-align: left; transition: color .2s;
+        }
+        .logout-btn:hover { color: #fff; }
+
+        /* ─── Responsive ──────────────────────────────────── */
         @@media (max-width: 991px) {
             .gmt-sidebar { transform: translateX(-100%); }
             .gmt-navbar, .gmt-main { left: 0; margin-left: 0; }
@@ -190,24 +233,29 @@
         }
     </style>
 
-    <!-- ESTA LÍNEA ES VITAL PARA EL ERROR DE STYLES -->
     @RenderSection("Styles", required: false)
-
 </head>
 <body>
 
-    <!-- ═══ SIDEBAR ═══ -->
-    <aside class="gmt-sidebar" id="gmtSidebar">
-        <div class="sidebar-brand">
-            <div class="brand-icon"><i class="fas fa-layer-group"></i></div>
-            <div class="brand-text">
-                <span class="brand-name">GMT</span>
-                <span class="brand-sub">Gestor Modular</span>
-            </div>
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="gmt-sidebar" id="gmtSidebar">
+    <div class="sidebar-brand">
+        <div class="brand-icon">
+            <i class="fas @(esEmpresa ? "fa-building" : "fa-layer-group")"></i>
         </div>
+        <div class="brand-text">
+            <span class="brand-name">GMT</span>
+            <span class="brand-sub">@(esEmpresa ? "Portal Empresa" : "Portal Alumno")</span>
+        </div>
+    </div>
 
-        <nav class="sidebar-nav">
+    <nav class="sidebar-nav">
+
+        @if (!esEmpresa)
+        {
+            <!-- ── NAV ALUMNO ─────────────────────────────── -->
             <div class="nav-section-label">Principal</div>
+
             <div class="nav-item">
                 <a href="/Dashboard/Alumno" class="nav-link-gmt @(activeModule == "dashboard" ? "active" : "")">
                     <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
@@ -218,96 +266,166 @@
             <div class="nav-section-label">Módulos</div>
 
             <div class="nav-item">
-                <a href="#vinculacionMenu" class="nav-link-gmt @(activeModule == "vinculacion" ? "active" : "")" 
-                   data-bs-toggle="collapse" aria-expanded="false">
-                    <span class="nav-icon"><i class="fas fa-handshake"></i></span>
-                    <span>Vinculación</span>
-                    <i class="fas fa-chevron-down ms-auto" style="font-size:10px; opacity:.5;"></i>
-                </a>
-                <div class="collapse nav-collapse" id="vinculacionMenu">
-                    <a href="#" class="nav-sub-link">Residencias Profesionales</a>
-                    <a href="#" class="nav-sub-link">Servicio Social</a>
-                </div>
-            </div>
-
-            <div class="nav-item">
-                <a href="#" class="nav-link-gmt">
-                    <span class="nav-icon"><i class="fas fa-graduation-cap"></i></span>
-                    <span>Titulación</span>
-                    <span class="nav-badge">3</span>
-                </a>
-            </div>
-
-            <div class="nav-item">
-                <a href="/Dashboard/Peticiones" class="nav-link-gmt">
+                <a href="/Dashboard/Peticiones" class="nav-link-gmt @(activeModule == "peticiones" ? "active" : "")">
                     <span class="nav-icon"><i class="fas fa-file-circle-plus"></i></span>
-                    <span>Peticiones</span>
+                    <span>Mis Peticiones</span>
                 </a>
             </div>
 
             <div class="nav-item">
-                <a href="/Dashboard/PerfilAcademico" class="nav-link-gmt">
+                <a href="/Dashboard/PerfilAcademico" class="nav-link-gmt @(activeModule == "perfil" ? "active" : "")">
                     <span class="nav-icon"><i class="fas fa-user-graduate"></i></span>
                     <span>Perfil Académico</span>
                 </a>
             </div>
 
-            <div class="nav-item" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+            <div class="nav-item">
+                <a href="#vinculacionMenu" class="nav-link-gmt @(activeModule == "vinculacion" ? "active" : "")"
+                   data-bs-toggle="collapse" aria-expanded="false">
+                    <span class="nav-icon"><i class="fas fa-handshake"></i></span>
+                    <span>Vinculación</span>
+                    <i class="fas fa-chevron-down ms-auto" style="font-size:10px; opacity:.5;"></i>
+                </a>
+                <div class="collapse nav-collapse ps-3" id="vinculacionMenu">
+                    <a href="#" class="nav-link-gmt" style="padding:8px 16px; font-size:13px; opacity:.8;">
+                        <span class="nav-icon" style="font-size:13px;"><i class="fas fa-briefcase"></i></span>
+                        <span>Residencias</span>
+                    </a>
+                    <a href="#" class="nav-link-gmt" style="padding:8px 16px; font-size:13px; opacity:.8;">
+                        <span class="nav-icon" style="font-size:13px;"><i class="fas fa-heart-pulse"></i></span>
+                        <span>Servicio Social</span>
+                    </a>
+                </div>
+            </div>
+
+            <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,.05); padding-top:10px;">
                 <a href="#" class="nav-link-gmt">
                     <span class="nav-icon"><i class="fas fa-sliders"></i></span>
                     <span>Configuración</span>
                 </a>
             </div>
-        </nav>
+        }
+        else
+        {
+            <!-- ── NAV EMPRESA ────────────────────────────── -->
+            <div class="nav-section-label">Principal</div>
 
-        <div class="sidebar-footer" style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.08);">
-            <div class="d-flex align-items-center gap-2">
-                <div class="user-avatar" style="width:30px; height:30px; font-size:10px;">@userInitials</div>
-                <div class="overflow-hidden">
-                    <div style="color:#fff; font-size:12px; font-weight:600; white-space:nowrap; text-overflow:ellipsis;">@userName</div>
-                    <div style="color:rgba(255,255,255,0.4); font-size:10px;">@userRole</div>
-                </div>
+            <div class="nav-item">
+                <a href="/Dashboard/Empresa" class="nav-link-gmt @(activeModule == "dashboard" ? "active" : "")">
+                    <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+                    <span>Resumen</span>
+                </a>
+            </div>
+
+            <div class="nav-section-label">Gestión</div>
+
+            <div class="nav-item">
+                <a href="/Dashboard/EmpresaPlazas" class="nav-link-gmt @(activeModule == "plazas" ? "active" : "")">
+                    <span class="nav-icon"><i class="fas fa-briefcase"></i></span>
+                    <span>Mis Plazas</span>
+                </a>
+            </div>
+
+            <div class="nav-item">
+                <a href="/Dashboard/EmpresaSolicitudes" class="nav-link-gmt @(activeModule == "solicitudes" ? "active" : "")">
+                    <span class="nav-icon"><i class="fas fa-inbox"></i></span>
+                    <span>Solicitudes</span>
+                    @{
+                        var pendientes = ViewBag.SolicitudesPendientes as int? ?? 0;
+                        if (pendientes > 0) {
+                            <span class="nav-badge">@pendientes</span>
+                        }
+                    }
+                </a>
+            </div>
+
+            <div class="nav-item">
+                <a href="/Dashboard/EmpresaDocumentos" class="nav-link-gmt @(activeModule == "documentos" ? "active" : "")">
+                    <span class="nav-icon"><i class="fas fa-folder-open"></i></span>
+                    <span>Documentos</span>
+                </a>
+            </div>
+
+            <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,.05); padding-top:10px;">
+                <a href="/Dashboard/EmpresaPerfil" class="nav-link-gmt @(activeModule == "perfil" ? "active" : "")">
+                    <span class="nav-icon"><i class="fas fa-building-user"></i></span>
+                    <span>Perfil Empresa</span>
+                </a>
+                <a href="#" class="nav-link-gmt">
+                    <span class="nav-icon"><i class="fas fa-sliders"></i></span>
+                    <span>Configuración</span>
+                </a>
+            </div>
+        }
+
+    </nav>
+
+    <!-- Footer sidebar con logout -->
+    <div class="sidebar-footer">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <div class="user-avatar" style="width:30px; height:30px; font-size:10px;">@userInitials</div>
+            <div class="overflow-hidden">
+                <div style="color:#fff; font-size:12px; font-weight:600; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; max-width:160px;">@userName</div>
+                <div style="color:rgba(255,255,255,.4); font-size:10px;">@userRole</div>
             </div>
         </div>
-    </aside>
-
-    <!-- ═══ NAVBAR ═══ -->
-    <header class="gmt-navbar">
-        <button class="navbar-toggle d-lg-none btn" id="sidebarToggle"><i class="fas fa-bars"></i></button>
-
-        <div class="navbar-search">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" class="search-input" placeholder="Buscar expediente, alumno…" />
-        </div>
-
-        <div class="navbar-actions">
-            <button class="action-btn" title="Notificaciones">
-                <i class="fas fa-bell"></i>
-                <span class="notif-dot"></span>
+        <form asp-action="Logout" asp-controller="Account" method="post">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="logout-btn">
+                <i class="fas fa-right-from-bracket"></i> Cerrar sesión
             </button>
-            
-            <div style="width:1px; height:24px; background:var(--border); margin:0 8px;"></div>
+        </form>
+    </div>
+</aside>
 
-            <div class="profile-area">
-                <div class="user-avatar">@userInitials</div>
-                <div class="d-none d-md-block">
-                    <div class="profile-name" style="font-size:13px; font-weight:600;">@userName</div>
-                    <div class="profile-role" style="font-size:11px; color:var(--text-muted);">@userRole</div>
-                </div>
-                <i class="fas fa-chevron-down ms-1" style="font-size:10px; color:var(--text-muted);"></i>
+<!-- ═══ NAVBAR ═══ -->
+<header class="gmt-navbar">
+    <button class="btn d-lg-none me-2" id="sidebarToggle" style="color:var(--text-secondary);">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="navbar-search d-none d-md-block">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" class="search-input" placeholder="@(esEmpresa ? "Buscar solicitudes, plazas…" : "Buscar expediente, empresa…")" />
+    </div>
+
+    <div class="navbar-actions">
+        <span class="portal-badge @(esEmpresa ? "empresa" : "alumno")">
+            <i class="fas @(esEmpresa ? "fa-building" : "fa-user-graduate")"></i>
+            @(esEmpresa ? "Empresa" : "Alumno")
+        </span>
+
+        <button class="action-btn" title="Notificaciones">
+            <i class="fas fa-bell"></i>
+            <span class="notif-dot"></span>
+        </button>
+
+        <div style="width:1px; height:24px; background:var(--border); margin:0 4px;"></div>
+
+        <div class="profile-area">
+            <div class="user-avatar">@userInitials</div>
+            <div class="d-none d-md-block">
+                <div style="font-size:13px; font-weight:600;">@userName</div>
+                <div style="font-size:11px; color:var(--text-muted);">@userRole</div>
             </div>
+            <i class="fas fa-chevron-down ms-1" style="font-size:10px; color:var(--text-muted);"></i>
         </div>
-    </header>
+    </div>
+</header>
 
-    <!-- ═══ MAIN CONTENT ═══ -->
-    <main class="gmt-main">
-        @RenderBody()
-    </main>
+<!-- ═══ MAIN CONTENT ═══ -->
+<main class="gmt-main">
+    @RenderBody()
+</main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Sidebar mobile toggle
+    document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+        document.getElementById('gmtSidebar').classList.toggle('open');
+    });
+</script>
 
-    <!-- ESTA LÍNEA ES VITAL PARA EL ERROR DE SCRIPTS[cite: 14] -->
-    @RenderSection("Scripts", required: false)
-
+@RenderSection("Scripts", required: false)
 </body>
 </html>

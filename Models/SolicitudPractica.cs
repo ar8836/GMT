@@ -22,6 +22,10 @@ namespace GMT.Models
         [Column("convenio_id")]
         public int? ConvenioId { get; set; }
 
+        // NUEVO: referencia a la plaza publicada por la empresa
+        [Column("plaza_id")]
+        public int? PlazaId { get; set; }
+
         // 'solicitado' | 'aceptado' | 'en_curso' | 'concluido' | 'rechazado'
         [Required]
         [Column("estado")]
@@ -54,5 +58,8 @@ namespace GMT.Models
 
         [ForeignKey("ConvenioId")]
         public Convenio? Convenio { get; set; }
+
+        [ForeignKey("PlazaId")]
+        public PlazaPractica? Plaza { get; set; }
     }
 }

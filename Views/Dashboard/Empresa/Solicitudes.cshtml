@@ -1,0 +1,301 @@
+@using GMT.Models
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]        = "Solicitudes";
+    ViewData["ActiveModule"] = "solicitudes";
+    ViewData["PortalTipo"]   = "empresa";
+
+    var empresa    = ViewBag.Empresa     as Empresa;
+    var solicitudes = ViewBag.Solicitudes as List<SolicitudPractica> ?? new();
+
+    var pendientes = solicitudes.Where(s => s.Estado == "solicitado").ToList();
+    var activas    = solicitudes.Where(s => s.Estado == "aceptado" || s.Estado == "en_curso").ToList();
+    var historial  = solicitudes.Where(s => s.Estado == "rechazado" || s.Estado == "concluido").ToList();
+}
+
+@section Styles {
+<style>
+    .page-header { margin-bottom: 28px; }
+    .page-title  { font-size: 22px; font-weight: 800; margin: 0; }
+
+    .tab-bar { display: flex; gap: 4px; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 24px; width: fit-content; }
+    .tab-item {
+        padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+        color: var(--text-muted); cursor: pointer; border: none; background: none; transition: var(--transition);
+        position: relative;
+    }
+    .tab-item.active { background: #fff; color: var(--emp-accent); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+    .tab-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 18px; height: 18px; border-radius: 50%;
+        font-size: 10px; font-weight: 800;
+        background: #ef4444; color: #fff;
+        margin-left: 4px;
+    }
+
+    /* Sol card */
+    .sol-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0;
+        overflow: hidden;
+        transition: var(--transition);
+    }
+    .sol-card:hover { box-shadow: var(--shadow-md); }
+
+    .sol-card-header {
+        padding: 18px 22px 14px;
+        display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .alumno-avatar {
+        width: 42px; height: 42px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 14px; color: #fff; flex-shrink: 0;
+    }
+
+    .alumno-nombre  { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+    .alumno-detalle { font-size: 12px; color: var(--text-muted); }
+
+    .sol-card-body { padding: 14px 22px; }
+
+    .sol-info-row {
+        display: flex; flex-wrap: wrap; gap: 14px;
+        font-size: 12.5px; color: var(--text-secondary); margin-bottom: 10px;
+    }
+    .sol-info-item { display: flex; align-items: center; gap: 5px; }
+
+    .sol-card-footer {
+        padding: 12px 22px;
+        border-top: 1px solid var(--border);
+        background: var(--bg);
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+
+    /* Estado pill */
+    .estado-pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
+    }
+    .estado-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+    .pill-solicitado { background: #fef3c7; color: #92400e; } .pill-solicitado::before { background: #f59e0b; }
+    .pill-aceptado   { background: #dcfce7; color: #166534; } .pill-aceptado::before   { background: #22c55e; }
+    .pill-rechazado  { background: #fee2e2; color: #991b1b; } .pill-rechazado::before  { background: #ef4444; }
+    .pill-en_curso   { background: #dbeafe; color: #1e40af; } .pill-en_curso::before   { background: #3b82f6; }
+    .pill-concluido  { background: #f3f4f6; color: #374151; } .pill-concluido::before  { background: #9ca3af; }
+
+    .empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+    .empty-state i { font-size: 2.5rem; opacity: .2; margin-bottom: 14px; display: block; }
+
+    /* Sección plegable */
+    .sol-section { display: none; }
+    .sol-section.active { display: block; }
+
+    /* Colores de avatar por carrera */
+    .av-isc   { background: #4a90d9; }
+    .av-iia   { background: #7c3aed; }
+    .av-ici   { background: #0d9488; }
+    .av-iem   { background: #d97706; }
+    .av-ige   { background: #dc2626; }
+    .av-other { background: #64748b; }
+</style>
+}
+
+<div class="page-header">
+    <h4 class="page-title">Solicitudes de Alumnos</h4>
+    <p class="mb-0" style="color:var(--text-muted); font-size:13px;">
+        Revisa, acepta o rechaza las solicitudes de prácticas profesionales
+    </p>
+</div>
+
+<!-- Tabs -->
+<div class="tab-bar">
+    <button class="tab-item active" data-section="pendientes">
+        Pendientes
+        @if (pendientes.Any()) { <span class="tab-badge">@pendientes.Count</span> }
+    </button>
+    <button class="tab-item" data-section="activas">En curso (@activas.Count)</button>
+    <button class="tab-item" data-section="historial">Historial (@historial.Count)</button>
+</div>
+
+<!-- ══ PENDIENTES ══ -->
+<div class="sol-section active" id="sec-pendientes">
+    @if (!pendientes.Any())
+    {
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <div style="font-size:15px; font-weight:700; margin-bottom:6px;">Sin solicitudes pendientes</div>
+            <div style="font-size:13px;">Cuando un alumno solicite una de tus plazas, aparecerá aquí</div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var sol in pendientes)
+            {
+                var initials = string.Join("", (sol.Alumno?.NombreCompleto ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString().ToUpper() : ""));
+                var avClass  = sol.Alumno?.Carrera switch { "ISC" => "av-isc", "IIA" => "av-iia", "ICI" => "av-ici", "IEM" => "av-iem", "IGE" => "av-ige", _ => "av-other" };
+                <div class="col-12 col-lg-6">
+                    <div class="sol-card">
+                        <div class="sol-card-header">
+                            <div class="d-flex gap-3 align-items-center">
+                                <div class="alumno-avatar @avClass">@initials</div>
+                                <div>
+                                    <div class="alumno-nombre">@(sol.Alumno?.NombreCompleto ?? "Alumno")</div>
+                                    <div class="alumno-detalle">
+                                        @(sol.Alumno?.NumeroControl ?? "—") · @(sol.Alumno?.Carrera ?? "—") · @(sol.Alumno?.Semestre)° sem.
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="estado-pill pill-solicitado">Pendiente</span>
+                        </div>
+                        <div class="sol-card-body">
+                            <div class="sol-info-row">
+                                @if (sol.Plaza != null)
+                                {
+                                    <span class="sol-info-item"><i class="fas fa-briefcase" style="color:var(--emp-accent);"></i> @sol.Plaza.Titulo</span>
+                                }
+                                <span class="sol-info-item"><i class="fas fa-calendar" style="color:var(--text-muted);"></i> @sol.FechaSolicitud.ToString("dd MMM yyyy")</span>
+                            </div>
+                        </div>
+                        <div class="sol-card-footer">
+                            <div style="font-size:11.5px; color:var(--text-muted);">
+                                Solicitud #@sol.Id
+                            </div>
+                            <div class="d-flex gap-2">
+                                <form asp-action="ResponderSolicitud" asp-controller="Dashboard" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="solicitudId" value="@sol.Id" />
+                                    <input type="hidden" name="decision" value="rechazado" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger fw-600" style="border-radius:8px; font-size:12px;">
+                                        <i class="fas fa-xmark me-1"></i> Rechazar
+                                    </button>
+                                </form>
+                                <form asp-action="ResponderSolicitud" asp-controller="Dashboard" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="solicitudId" value="@sol.Id" />
+                                    <input type="hidden" name="decision" value="aceptado" />
+                                    <button type="submit" class="btn btn-sm fw-600" style="background:var(--emp-accent); color:#fff; border-radius:8px; font-size:12px;">
+                                        <i class="fas fa-check me-1"></i> Aceptar
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- ══ EN CURSO ══ -->
+<div class="sol-section" id="sec-activas">
+    @if (!activas.Any())
+    {
+        <div class="empty-state">
+            <i class="fas fa-user-clock"></i>
+            <div style="font-size:15px; font-weight:700; margin-bottom:6px;">Sin prácticas activas</div>
+            <div style="font-size:13px;">Aquí aparecerán los alumnos que hayas aceptado</div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var sol in activas)
+            {
+                var initials = string.Join("", (sol.Alumno?.NombreCompleto ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString().ToUpper() : ""));
+                var avClass  = sol.Alumno?.Carrera switch { "ISC" => "av-isc", "IIA" => "av-iia", "ICI" => "av-ici", "IEM" => "av-iem", "IGE" => "av-ige", _ => "av-other" };
+                <div class="col-12 col-lg-6">
+                    <div class="sol-card">
+                        <div class="sol-card-header">
+                            <div class="d-flex gap-3 align-items-center">
+                                <div class="alumno-avatar @avClass">@initials</div>
+                                <div>
+                                    <div class="alumno-nombre">@(sol.Alumno?.NombreCompleto ?? "Alumno")</div>
+                                    <div class="alumno-detalle">
+                                        @(sol.Alumno?.NumeroControl ?? "—") · @(sol.Alumno?.Carrera ?? "—") · @(sol.Alumno?.Semestre)° sem.
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="estado-pill pill-@sol.Estado">@(sol.Estado == "en_curso" ? "En curso" : "Aceptado")</span>
+                        </div>
+                        <div class="sol-card-body">
+                            <div class="sol-info-row">
+                                @if (sol.Plaza != null)
+                                {
+                                    <span class="sol-info-item"><i class="fas fa-briefcase" style="color:var(--emp-accent);"></i> @sol.Plaza.Titulo</span>
+                                }
+                                @if (sol.FechaInicio.HasValue)
+                                {
+                                    <span class="sol-info-item"><i class="fas fa-calendar-check" style="color:#0d9488;"></i> Inicio: @sol.FechaInicio.Value.ToString("dd MMM yyyy")</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="sol-card-footer">
+                            <div style="font-size:11.5px; color:var(--text-muted);">Aceptado el @sol.FechaSolicitud.ToString("dd MMM yyyy")</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- ══ HISTORIAL ══ -->
+<div class="sol-section" id="sec-historial">
+    @if (!historial.Any())
+    {
+        <div class="empty-state">
+            <i class="fas fa-clock-rotate-left"></i>
+            <div style="font-size:15px; font-weight:700; margin-bottom:6px;">Sin historial aún</div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var sol in historial)
+            {
+                var initials = string.Join("", (sol.Alumno?.NombreCompleto ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString().ToUpper() : ""));
+                var avClass  = sol.Alumno?.Carrera switch { "ISC" => "av-isc", "IIA" => "av-iia", "ICI" => "av-ici", "IEM" => "av-iem", "IGE" => "av-ige", _ => "av-other" };
+                <div class="col-12 col-lg-6">
+                    <div class="sol-card" style="opacity:.8;">
+                        <div class="sol-card-header">
+                            <div class="d-flex gap-3 align-items-center">
+                                <div class="alumno-avatar @avClass" style="filter:grayscale(.4);">@initials</div>
+                                <div>
+                                    <div class="alumno-nombre">@(sol.Alumno?.NombreCompleto ?? "Alumno")</div>
+                                    <div class="alumno-detalle">@(sol.Alumno?.NumeroControl ?? "—") · @(sol.Alumno?.Carrera ?? "—")</div>
+                                </div>
+                            </div>
+                            <span class="estado-pill pill-@sol.Estado">
+                                @(sol.Estado == "concluido" ? "Concluido" : "Rechazado")
+                            </span>
+                        </div>
+                        <div class="sol-card-body">
+                            <div class="sol-info-row">
+                                @if (sol.Plaza != null) { <span class="sol-info-item"><i class="fas fa-briefcase"></i> @sol.Plaza.Titulo</span> }
+                                <span class="sol-info-item"><i class="fas fa-calendar"></i> @sol.FechaSolicitud.ToString("dd MMM yyyy")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    document.querySelectorAll('.tab-item').forEach(tab => {
+        tab.addEventListener('click', function () {
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.sol-section').forEach(s => s.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('sec-' + this.dataset.section).classList.add('active');
+        });
+    });
+</script>
+}

@@ -1,0 +1,288 @@
+@using GMT.Models
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]        = "Mis Plazas";
+    ViewData["ActiveModule"] = "plazas";
+    ViewData["PortalTipo"]   = "empresa";
+
+    var empresa = ViewBag.Empresa as Empresa;
+    var plazas  = ViewBag.Plazas  as List<PlazaPractica> ?? new();
+}
+
+@section Styles {
+<style>
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .page-title  { font-size: 22px; font-weight: 800; margin: 0; }
+
+    /* Tabs de estado */
+    .tab-bar { display: flex; gap: 4px; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 24px; width: fit-content; }
+    .tab-item {
+        padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+        color: var(--text-muted); cursor: pointer; border: none; background: none; transition: var(--transition);
+    }
+    .tab-item.active { background: #fff; color: var(--emp-accent); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+    /* Plaza card */
+    .plaza-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px 24px;
+        transition: var(--transition);
+        position: relative;
+    }
+    .plaza-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+    .plaza-titulo   { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .plaza-meta     { font-size: 12.5px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+    .plaza-meta-item { display: flex; align-items: center; gap: 5px; }
+
+    .plaza-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 14px;
+                  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .plaza-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+    .cupos-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .cupos-bar { height: 6px; border-radius: 3px; background: var(--border); flex: 1; min-width: 80px; }
+    .cupos-fill { height: 100%; border-radius: 3px; background: var(--emp-accent); transition: width .4s; }
+
+    /* Estado pill */
+    .estado-pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
+    }
+    .estado-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+    .pill-activa   { background: #dcfce7; color: #166534; } .pill-activa::before   { background: #22c55e; }
+    .pill-borrador { background: #f3f4f6; color: #374151; } .pill-borrador::before { background: #9ca3af; }
+    .pill-pausada  { background: #fef3c7; color: #92400e; } .pill-pausada::before  { background: #f59e0b; }
+    .pill-cerrada  { background: #fee2e2; color: #991b1b; } .pill-cerrada::before  { background: #ef4444; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-state i { font-size: 3rem; opacity: .2; margin-bottom: 16px; display: block; }
+
+    /* Modal */
+    .gmt-modal-header { background: linear-gradient(135deg, var(--emp-primary), var(--emp-accent)); color: #fff; border-radius: 12px 12px 0 0; padding: 20px 24px; }
+    .form-label-sm { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+</style>
+}
+
+<div class="page-header">
+    <div>
+        <h4 class="page-title">Mis Plazas</h4>
+        <p class="mb-0" style="color:var(--text-muted); font-size:13px;">
+            Gestiona las plazas de prácticas que has publicado
+        </p>
+    </div>
+    <button class="btn fw-600" style="background:var(--emp-accent); color:#fff; border-radius:10px; padding:9px 20px;"
+            data-bs-toggle="modal" data-bs-target="#modalNuevePlaza">
+        <i class="fas fa-plus me-1"></i> Nueva Plaza
+    </button>
+</div>
+
+<!-- Tabs -->
+<div class="tab-bar">
+    <button class="tab-item active" data-filter="todas">Todas (@plazas.Count)</button>
+    <button class="tab-item" data-filter="activa">Activas (@plazas.Count(p => p.Estado == "activa"))</button>
+    <button class="tab-item" data-filter="borrador">Borradores (@plazas.Count(p => p.Estado == "borrador"))</button>
+    <button class="tab-item" data-filter="pausada">Pausadas (@plazas.Count(p => p.Estado == "pausada"))</button>
+    <button class="tab-item" data-filter="cerrada">Cerradas (@plazas.Count(p => p.Estado == "cerrada"))</button>
+</div>
+
+@if (!plazas.Any())
+{
+    <div class="empty-state">
+        <i class="fas fa-briefcase"></i>
+        <div style="font-size:16px; font-weight:700; margin-bottom:8px;">Aún no tienes plazas</div>
+        <div style="font-size:13px; margin-bottom:20px;">Crea tu primera plaza para comenzar a recibir solicitudes de alumnos</div>
+        <button class="btn fw-600" style="background:var(--emp-accent); color:#fff; border-radius:10px;"
+                data-bs-toggle="modal" data-bs-target="#modalNuevePlaza">
+            <i class="fas fa-plus me-1"></i> Crear primera plaza
+        </button>
+    </div>
+}
+else
+{
+    <div class="row g-3" id="plazasContainer">
+        @foreach (var p in plazas)
+        {
+            var pct = p.CuposDisponibles > 0 ? (int)((double)p.CuposOcupados / p.CuposDisponibles * 100) : 100;
+            <div class="col-12 col-lg-6 plaza-item" data-estado="@p.Estado">
+                <div class="plaza-card">
+                    <!-- Header -->
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <div class="plaza-titulo">@p.Titulo</div>
+                        <span class="estado-pill pill-@p.Estado">@p.Estado</span>
+                    </div>
+
+                    <!-- Meta -->
+                    <div class="plaza-meta">
+                        @if (!string.IsNullOrEmpty(p.Area))
+                        {
+                            <span class="plaza-meta-item"><i class="fas fa-layer-group"></i> @p.Area</span>
+                        }
+                        <span class="plaza-meta-item">
+                            <i class="fas @(p.Modalidad == "remoto" ? "fa-wifi" : p.Modalidad == "hibrido" ? "fa-arrows-left-right" : "fa-building")"></i>
+                            @(p.Modalidad[0].ToString().ToUpper() + p.Modalidad[1..])
+                        </span>
+                        @if (p.FechaInicio.HasValue)
+                        {
+                            <span class="plaza-meta-item"><i class="fas fa-calendar"></i> @p.FechaInicio.Value.ToString("dd MMM yyyy")</span>
+                        }
+                        @if (p.SemestreMinimo.HasValue)
+                        {
+                            <span class="plaza-meta-item"><i class="fas fa-graduation-cap"></i> Desde @(p.SemestreMinimo)° sem.</span>
+                        }
+                    </div>
+
+                    <div class="plaza-desc">@p.Descripcion</div>
+
+                    <!-- Footer -->
+                    <div class="plaza-footer">
+                        <div class="cupos-bar-wrap">
+                            <div style="font-size:12px; color:var(--text-muted);">
+                                <strong style="color:var(--text-primary);">@p.CuposOcupados/@p.CuposDisponibles</strong> cupos
+                            </div>
+                            <div class="cupos-bar" style="width:100px;">
+                                <div class="cupos-fill" style="width:@(pct)%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            @if (p.Estado == "borrador")
+                            {
+                                <form asp-action="CambiarEstadoPlaza" asp-controller="Dashboard" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="plazaId" value="@p.Id" />
+                                    <input type="hidden" name="nuevoEstado" value="activa" />
+                                    <button type="submit" class="btn btn-sm fw-600" style="background:var(--emp-accent); color:#fff; border-radius:8px; font-size:12px;">
+                                        <i class="fas fa-rocket me-1"></i> Publicar
+                                    </button>
+                                </form>
+                            }
+                            @if (p.Estado == "activa")
+                            {
+                                <form asp-action="CambiarEstadoPlaza" asp-controller="Dashboard" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="plazaId" value="@p.Id" />
+                                    <input type="hidden" name="nuevoEstado" value="pausada" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary fw-600" style="border-radius:8px; font-size:12px;">
+                                        <i class="fas fa-pause me-1"></i> Pausar
+                                    </button>
+                                </form>
+                            }
+                            @if (p.Estado == "pausada")
+                            {
+                                <form asp-action="CambiarEstadoPlaza" asp-controller="Dashboard" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="plazaId" value="@p.Id" />
+                                    <input type="hidden" name="nuevoEstado" value="activa" />
+                                    <button type="submit" class="btn btn-sm fw-600" style="background:var(--emp-accent); color:#fff; border-radius:8px; font-size:12px;">
+                                        <i class="fas fa-play me-1"></i> Reactivar
+                                    </button>
+                                </form>
+                            }
+                            @if (p.Estado != "cerrada")
+                            {
+                                <form asp-action="CambiarEstadoPlaza" asp-controller="Dashboard" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="plazaId" value="@p.Id" />
+                                    <input type="hidden" name="nuevoEstado" value="cerrada" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger fw-600" style="border-radius:8px; font-size:12px;">
+                                        <i class="fas fa-xmark me-1"></i> Cerrar
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- ═══ MODAL NUEVA PLAZA ═══ -->
+<div class="modal fade" id="modalNuevePlaza" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius:14px; border:none;">
+            <div class="gmt-modal-header">
+                <h5 class="mb-0 fw-700"><i class="fas fa-briefcase me-2"></i>Nueva Plaza de Prácticas</h5>
+            </div>
+            <form asp-action="CrearPlaza" asp-controller="Dashboard" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label-sm">Título de la plaza *</label>
+                            <input type="text" name="Titulo" class="form-control" placeholder="ej. Desarrollador Web Jr., Analista de Datos…" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-sm">Área / Departamento</label>
+                            <input type="text" name="Area" class="form-control" placeholder="ej. Desarrollo de Software, Redes…" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-sm">Modalidad *</label>
+                            <select name="Modalidad" class="form-select" required>
+                                <option value="presencial">Presencial</option>
+                                <option value="remoto">Remoto</option>
+                                <option value="hibrido">Híbrido</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label-sm">Descripción y actividades *</label>
+                            <textarea name="Descripcion" class="form-control" rows="4" required
+                                      placeholder="Describe las actividades, herramientas a usar y lo que aprenderá el practicante…"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-sm">Cupos disponibles</label>
+                            <input type="number" name="CuposDisponibles" class="form-control" value="1" min="1" max="20" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-sm">Semestre mínimo</label>
+                            <select name="SemestreMinimo" class="form-select">
+                                <option value="">Sin requisito</option>
+                                @for (int s = 1; s <= 10; s++) {
+                                    <option value="@s">@s° semestre</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-sm">Fecha de inicio</label>
+                            <input type="date" name="FechaInicio" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="PublicarAhora" value="true" id="chkPublicar" />
+                                <label class="form-check-label fw-600" for="chkPublicar" style="font-size:13px;">
+                                    Publicar inmediatamente (los alumnos podrán ver y solicitar esta plaza)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light fw-600" data-bs-dismiss="modal" style="border-radius:9px;">Cancelar</button>
+                    <button type="submit" class="btn fw-600" style="background:var(--emp-accent); color:#fff; border-radius:9px; padding:9px 22px;">
+                        <i class="fas fa-save me-1"></i> Guardar Plaza
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Filtro por tabs
+    document.querySelectorAll('.tab-item').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            const filtro = this.dataset.filter;
+            document.querySelectorAll('.plaza-item').forEach(item => {
+                item.style.display = (filtro === 'todas' || item.dataset.estado === filtro) ? '' : 'none';
+            });
+        });
+    });
+</script>
+}

@@ -5,11 +5,10 @@
 namespace GMT.Migrations
 {
     /// <inheritdoc />
-    public partial class EsquemaV2_Limpio : Migration
+    public partial class PortalEmpresaV1 : Migration
     {
-        // La DB ya fue creada manualmente con schema_v2.sql directamente en RDS.
-        // Up() y Down() están vacíos a propósito para que EF solo registre
-        // el historial sin intentar re-crear nada.
+        // Tablas creadas manualmente con empresa_v1.sql en RDS.
+        // Up() y Down() vacíos — EF solo registra el historial.
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder) { }
 

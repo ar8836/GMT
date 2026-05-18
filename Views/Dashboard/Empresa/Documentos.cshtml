@@ -1,0 +1,306 @@
+@using GMT.Models
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]        = "Documentos";
+    ViewData["ActiveModule"] = "documentos";
+    ViewData["PortalTipo"]   = "empresa";
+
+    var empresa    = ViewBag.Empresa    as Empresa;
+    var documentos = ViewBag.Documentos as List<DocumentoEmpresa> ?? new();
+}
+
+@section Styles {
+<style>
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .page-title  { font-size: 22px; font-weight: 800; margin: 0; }
+
+    /* Upload zone */
+    .upload-zone {
+        border: 2px dashed rgba(124,58,237,.35);
+        border-radius: var(--radius);
+        padding: 40px 24px;
+        text-align: center;
+        background: rgba(124,58,237,.03);
+        cursor: pointer;
+        transition: var(--transition);
+        margin-bottom: 28px;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+        border-color: var(--emp-accent);
+        background: rgba(124,58,237,.07);
+    }
+    .upload-zone i { font-size: 2.5rem; color: var(--emp-accent); opacity: .5; margin-bottom: 12px; display: block; }
+    .upload-zone .uz-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .upload-zone .uz-sub   { font-size: 12.5px; color: var(--text-muted); }
+
+    /* Doc card */
+    .doc-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        display: flex; align-items: center; gap: 16px;
+        transition: var(--transition);
+    }
+    .doc-card:hover { box-shadow: var(--shadow-md); }
+
+    .doc-icon {
+        width: 46px; height: 46px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; flex-shrink: 0;
+    }
+    .doc-icon.convenio   { background: rgba(0,35,102,.08);   color: var(--navy); }
+    .doc-icon.acta       { background: rgba(13,148,136,.1);  color: #0d9488; }
+    .doc-icon.comprobante{ background: rgba(217,119,6,.1);   color: #d97706; }
+    .doc-icon.otro       { background: rgba(100,116,139,.1); color: #64748b; }
+
+    .doc-nombre { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+    .doc-meta   { font-size: 11.5px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .doc-estado {
+        margin-left: auto;
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
+        flex-shrink: 0;
+    }
+    .doc-estado::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+    .est-pendiente { background: #fef3c7; color: #92400e; } .est-pendiente::before { background: #f59e0b; }
+    .est-aprobado  { background: #dcfce7; color: #166534; } .est-aprobado::before  { background: #22c55e; }
+    .est-rechazado { background: #fee2e2; color: #991b1b; } .est-rechazado::before { background: #ef4444; }
+
+    /* Info box tipos */
+    .tipos-info { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 24px; }
+    .tipo-item  { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .tipo-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .tipo-req   { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+                  padding: 2px 7px; border-radius: 4px; margin-left: auto; flex-shrink: 0; }
+    .req-obligatorio { background: #fee2e2; color: #991b1b; }
+    .req-opcional    { background: #f3f4f6; color: #374151; }
+
+    /* Modal */
+    .gmt-modal-header { background: linear-gradient(135deg, var(--emp-primary), var(--emp-accent)); color: #fff; border-radius: 12px 12px 0 0; padding: 20px 24px; }
+    .form-label-sm { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+
+    /* Progress upload */
+    .upload-progress { display: none; margin-top: 12px; }
+    .upload-progress .progress { height: 6px; border-radius: 3px; }
+    .upload-progress .progress-bar { background: var(--emp-accent); }
+</style>
+}
+
+<div class="page-header">
+    <div>
+        <h4 class="page-title">Documentos</h4>
+        <p class="mb-0" style="color:var(--text-muted); font-size:13px;">
+            Sube y gestiona los documentos requeridos para publicar plazas
+        </p>
+    </div>
+    <button class="btn fw-600" style="background:var(--emp-accent); color:#fff; border-radius:10px; padding:9px 20px;"
+            data-bs-toggle="modal" data-bs-target="#modalSubirDoc">
+        <i class="fas fa-upload me-1"></i> Subir Documento
+    </button>
+</div>
+
+<!-- Tipos requeridos -->
+<div class="tipos-info mb-4">
+    <div style="font-size:13px; font-weight:700; margin-bottom:8px; color:var(--text-primary);">
+        <i class="fas fa-circle-info me-2" style="color:var(--emp-accent);"></i>Documentos requeridos para publicar plazas
+    </div>
+    <div class="tipo-item">
+        <div class="doc-icon convenio" style="width:36px; height:36px; font-size:16px;"><i class="fas fa-handshake"></i></div>
+        <div>
+            <div style="font-size:13px; font-weight:700;">Convenio institucional</div>
+            <div style="font-size:12px; color:var(--text-muted);">Convenio de colaboración firmado con el TecNM Campus Acapulco</div>
+        </div>
+        <span class="tipo-req req-obligatorio">Obligatorio</span>
+    </div>
+    <div class="tipo-item">
+        <div class="doc-icon acta" style="width:36px; height:36px; font-size:16px;"><i class="fas fa-file-contract"></i></div>
+        <div>
+            <div style="font-size:13px; font-weight:700;">Acta constitutiva</div>
+            <div style="font-size:12px; color:var(--text-muted);">Documento legal que acredita la existencia de la empresa</div>
+        </div>
+        <span class="tipo-req req-obligatorio">Obligatorio</span>
+    </div>
+    <div class="tipo-item">
+        <div class="doc-icon comprobante" style="width:36px; height:36px; font-size:16px;"><i class="fas fa-location-dot"></i></div>
+        <div>
+            <div style="font-size:13px; font-weight:700;">Comprobante de domicilio</div>
+            <div style="font-size:12px; color:var(--text-muted);">No mayor a 3 meses de antigüedad</div>
+        </div>
+        <span class="tipo-req req-opcional">Opcional</span>
+    </div>
+</div>
+
+<!-- Zona de arrastre -->
+<div class="upload-zone" id="uploadZone">
+    <i class="fas fa-cloud-arrow-up"></i>
+    <div class="uz-title">Arrastra tu documento aquí</div>
+    <div class="uz-sub">o haz clic para seleccionar · PDF hasta 10 MB</div>
+    <div class="upload-progress mt-3">
+        <div class="progress"><div class="progress-bar" role="progressbar" style="width:0%"></div></div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">Subiendo…</div>
+    </div>
+</div>
+
+<!-- Lista de documentos subidos -->
+@if (!documentos.Any())
+{
+    <div class="text-center py-4" style="color:var(--text-muted);">
+        <i class="fas fa-folder-open fa-2x mb-3 d-block" style="opacity:.2;"></i>
+        <div style="font-size:14px; font-weight:600;">Aún no has subido documentos</div>
+        <div style="font-size:12.5px; margin-top:4px;">Usa el botón "Subir Documento" o arrastra archivos al área de arriba</div>
+    </div>
+}
+else
+{
+    <div class="d-flex flex-column gap-3">
+        @foreach (var doc in documentos)
+        {
+            var iconClass = doc.TipoDocumento switch {
+                "convenio"             => "convenio",
+                "acta_constitutiva"    => "acta",
+                "comprobante_domicilio"=> "comprobante",
+                _                     => "otro"
+            };
+            var iconFA = doc.TipoDocumento switch {
+                "convenio"             => "fa-handshake",
+                "acta_constitutiva"    => "fa-file-contract",
+                "comprobante_domicilio"=> "fa-location-dot",
+                _                     => "fa-file"
+            };
+            var tipoLabel = doc.TipoDocumento switch {
+                "convenio"             => "Convenio",
+                "acta_constitutiva"    => "Acta Constitutiva",
+                "comprobante_domicilio"=> "Comprobante de Domicilio",
+                _                     => "Otro"
+            };
+            var tamanoKb = doc.TamanoBytes / 1024.0;
+            var tamanoStr = tamanoKb >= 1024 ? $"{tamanoKb/1024:F1} MB" : $"{tamanoKb:F0} KB";
+
+            <div class="doc-card">
+                <div class="doc-icon @iconClass"><i class="fas @iconFA"></i></div>
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="doc-nombre text-truncate">@doc.NombreArchivo</div>
+                    <div class="doc-meta">
+                        <span><i class="fas fa-tag"></i> @tipoLabel</span>
+                        <span><i class="fas fa-weight-hanging"></i> @tamanoStr</span>
+                        <span><i class="fas fa-calendar"></i> @doc.FechaSubida.ToString("dd MMM yyyy")</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="doc-estado est-@doc.Estado">
+                        @(doc.Estado switch { "aprobado" => "Aprobado", "rechazado" => "Rechazado", _ => "En revisión" })
+                    </span>
+                    <a href="@doc.Url" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius:8px; font-size:12px;" title="Ver documento">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- ═══ MODAL SUBIR DOCUMENTO ═══ -->
+<div class="modal fade" id="modalSubirDoc" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:14px; border:none;">
+            <div class="gmt-modal-header">
+                <h5 class="mb-0 fw-700"><i class="fas fa-upload me-2"></i>Subir Documento</h5>
+            </div>
+            <form id="formSubirDoc" enctype="multipart/form-data">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label-sm">Tipo de documento *</label>
+                        <select name="TipoDocumento" id="selectTipo" class="form-select" required>
+                            <option value="" disabled selected>Selecciona el tipo…</option>
+                            <option value="convenio">Convenio institucional</option>
+                            <option value="acta_constitutiva">Acta constitutiva</option>
+                            <option value="comprobante_domicilio">Comprobante de domicilio</option>
+                            <option value="otro">Otro documento</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-sm">Archivo (PDF, máx. 10 MB) *</label>
+                        <input type="file" name="Archivo" id="inputArchivo" class="form-control" accept=".pdf" required />
+                    </div>
+                    <div id="upload-feedback" style="display:none;">
+                        <div class="progress mb-2" style="height:6px;"><div class="progress-bar" id="upload-bar" style="background:var(--emp-accent); width:0%;"></div></div>
+                        <div id="upload-msg" style="font-size:12px; color:var(--text-muted);"></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light fw-600" data-bs-dismiss="modal" style="border-radius:9px;">Cancelar</button>
+                    <button type="submit" class="btn fw-600" id="btnSubir" style="background:var(--emp-accent); color:#fff; border-radius:9px; padding:9px 22px;">
+                        <i class="fas fa-upload me-1"></i> Subir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Drag & drop en upload zone (abre el modal)
+    const zone = document.getElementById('uploadZone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            document.getElementById('inputArchivo').files = e.dataTransfer.files;
+            const modal = new bootstrap.Modal(document.getElementById('modalSubirDoc'));
+            modal.show();
+        }
+    });
+    zone.addEventListener('click', () => new bootstrap.Modal(document.getElementById('modalSubirDoc')).show());
+
+    // Submit con fetch hacia el endpoint de S3 existente (UploadController)
+    document.getElementById('formSubirDoc').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn      = document.getElementById('btnSubir');
+        const feedback = document.getElementById('upload-feedback');
+        const bar      = document.getElementById('upload-bar');
+        const msg      = document.getElementById('upload-msg');
+
+        const file = document.getElementById('inputArchivo').files[0];
+        const tipo = document.getElementById('selectTipo').value;
+
+        if (!file || !tipo) return;
+        if (file.size > 10 * 1024 * 1024) { alert('El archivo supera los 10 MB.'); return; }
+
+        btn.disabled = true;
+        feedback.style.display = 'block';
+        msg.textContent = 'Subiendo archivo…';
+
+        const fd = new FormData();
+        fd.append('archivo', file);
+        fd.append('tipoDocumento', tipo);
+
+        // Animación de progreso simulada mientras hace la petición real
+        let pct = 0;
+        const ticker = setInterval(() => { pct = Math.min(pct + 8, 85); bar.style.width = pct + '%'; }, 200);
+
+        try {
+            const resp = await fetch('/api/Upload/empresa-documento', { method: 'POST', body: fd });
+            clearInterval(ticker);
+            if (resp.ok) {
+                bar.style.width = '100%';
+                msg.textContent = '✓ Subido correctamente. Recargando…';
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                const err = await resp.json();
+                msg.textContent = '✗ Error: ' + (err?.error ?? 'Inténtalo de nuevo');
+                btn.disabled = false;
+            }
+        } catch {
+            clearInterval(ticker);
+            msg.textContent = '✗ Error de conexión. Inténtalo de nuevo.';
+            btn.disabled = false;
+        }
+    });
+</script>
+}

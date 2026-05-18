@@ -1,0 +1,322 @@
+@using GMT.Models
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]        = "Dashboard Empresa";
+    ViewData["ActiveModule"] = "dashboard";
+    ViewData["PortalTipo"]   = "empresa";
+
+    var empresa    = ViewBag.Empresa    as Empresa;
+    var solicitudes = ViewBag.UltimasSolicitudes as List<SolicitudPractica> ?? new();
+    int plazasActivas  = ViewBag.PlazasActivas        ?? 0;
+    int solPendientes  = ViewBag.SolicitudesPendientes ?? 0;
+    int totalSol       = ViewBag.TotalSolicitudes      ?? 0;
+    bool tieneDocs     = ViewBag.TieneDocumentos       ?? false;
+}
+
+@section Styles {
+<style>
+    /* ─── KPI Cards ───────────────────────────────────── */
+    .kpi-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px 24px;
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+    .kpi-card::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0;
+        height: 3px; width: 100%;
+        opacity: 0;
+        transition: opacity .3s;
+    }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .kpi-card:hover::after { opacity: 1; }
+    .kpi-card.violet::after { background: linear-gradient(90deg, var(--emp-primary), var(--emp-accent)); }
+    .kpi-card.blue::after   { background: linear-gradient(90deg, var(--navy), var(--accent)); }
+    .kpi-card.green::after  { background: linear-gradient(90deg, #0d9488, #34d399); }
+    .kpi-card.amber::after  { background: linear-gradient(90deg, #d97706, #fbbf24); }
+
+    .kpi-icon {
+        width: 50px; height: 50px;
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; flex-shrink: 0;
+    }
+    .kpi-icon.violet { background: rgba(124,58,237,.1);  color: var(--emp-accent); }
+    .kpi-icon.blue   { background: rgba(0,35,102,.08);   color: var(--navy); }
+    .kpi-icon.green  { background: rgba(13,148,136,.1);  color: #0d9488; }
+    .kpi-icon.amber  { background: rgba(217,119,6,.1);   color: #d97706; }
+
+    .kpi-label  { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .kpi-value  { font-size: 32px; font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -1px; }
+
+    /* ─── Alerta sin documentos ───────────────────────── */
+    .alert-setup {
+        background: linear-gradient(135deg, rgba(124,58,237,.07), rgba(76,29,149,.04));
+        border: 1px solid rgba(124,58,237,.2);
+        border-radius: var(--radius);
+        padding: 20px 24px;
+    }
+
+    /* ─── Tabla solicitudes recientes ────────────────── */
+    .gmt-table-wrapper {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+    }
+    .gmt-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .gmt-table thead th {
+        padding: 13px 18px;
+        font-size: 11px; font-weight: 700; letter-spacing: .8px;
+        text-transform: uppercase; color: var(--text-muted);
+        background: var(--bg); border-bottom: 1px solid var(--border);
+    }
+    .gmt-table tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    .gmt-table tbody tr:last-child { border-bottom: none; }
+    .gmt-table tbody tr:hover { background: rgba(124,58,237,.03); }
+    .gmt-table tbody td { padding: 14px 18px; vertical-align: middle; }
+
+    .status-pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; border-radius: 20px;
+        font-size: 11.5px; font-weight: 600; white-space: nowrap;
+    }
+    .status-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+    .pill-solicitado { background: #fef3c7; color: #92400e; }
+    .pill-solicitado::before { background: #f59e0b; }
+    .pill-aceptado   { background: #dcfce7; color: #166534; }
+    .pill-aceptado::before { background: #22c55e; }
+    .pill-rechazado  { background: #fee2e2; color: #991b1b; }
+    .pill-rechazado::before { background: #ef4444; }
+    .pill-en_curso   { background: #dbeafe; color: #1e40af; }
+    .pill-en_curso::before { background: #3b82f6; }
+    .pill-concluido  { background: #f3f4f6; color: #374151; }
+    .pill-concluido::before { background: #9ca3af; }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section-title {
+        font-size: 15px; font-weight: 700; color: var(--text-primary);
+        display: flex; align-items: center; gap: 8px;
+    }
+    .section-title::before {
+        content: ''; width: 3px; height: 18px;
+        background: var(--emp-accent); border-radius: 2px; display: inline-block;
+    }
+    .btn-view-all {
+        font-size: 12px; font-weight: 600; color: var(--emp-accent);
+        text-decoration: none; display: flex; align-items: center; gap: 5px;
+    }
+    .btn-view-all:hover { color: var(--emp-primary); }
+
+    /* ─── Quick actions ───────────────────────────────── */
+    .quick-action {
+        display: flex; align-items: center; gap: 14px;
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 16px 20px;
+        text-decoration: none; color: var(--text-primary);
+        transition: var(--transition);
+    }
+    .quick-action:hover { border-color: var(--emp-accent); transform: translateY(-2px); box-shadow: var(--shadow-md); color: var(--text-primary); }
+    .qa-icon {
+        width: 42px; height: 42px; border-radius: 11px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; flex-shrink: 0;
+    }
+    .qa-title { font-size: 13.5px; font-weight: 700; margin-bottom: 2px; }
+    .qa-desc  { font-size: 11.5px; color: var(--text-muted); }
+</style>
+}
+
+<!-- ══ HEADER ══ -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-800 mb-1" style="font-size:22px;">
+            Bienvenido, <span style="color:var(--emp-accent);">@(empresa?.NombreEmpresa ?? "Empresa")</span> 👋
+        </h4>
+        <p class="mb-0" style="color:var(--text-muted); font-size:13px;">
+            @DateTime.Now.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-MX"))
+        </p>
+    </div>
+    <a href="/Dashboard/EmpresaPlazas" class="btn btn-sm fw-600"
+       style="background:var(--emp-accent); color:#fff; border-radius:10px; padding:8px 18px;">
+        <i class="fas fa-plus me-1"></i> Nueva Plaza
+    </a>
+</div>
+
+@if (!tieneDocs)
+{
+    <div class="alert-setup d-flex align-items-start gap-3 mb-4">
+        <i class="fas fa-triangle-exclamation fa-lg mt-1" style="color:var(--emp-accent);"></i>
+        <div>
+            <div class="fw-700 mb-1">Completa tu perfil para publicar plazas</div>
+            <div style="font-size:13px; color:var(--text-muted);">
+                Necesitas subir al menos un <strong>convenio vigente</strong> y tu <strong>acta constitutiva</strong>
+                antes de poder publicar plazas para practicantes.
+            </div>
+            <a href="/Dashboard/EmpresaDocumentos" class="btn btn-sm mt-2 fw-600"
+               style="background:var(--emp-accent); color:#fff; border-radius:8px;">
+                <i class="fas fa-upload me-1"></i> Subir documentos
+            </a>
+        </div>
+    </div>
+}
+
+<!-- ══ KPIs ══ -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card violet">
+            <div class="kpi-icon violet"><i class="fas fa-briefcase"></i></div>
+            <div>
+                <div class="kpi-label">Plazas Activas</div>
+                <div class="kpi-value">@plazasActivas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card amber">
+            <div class="kpi-icon amber"><i class="fas fa-inbox"></i></div>
+            <div>
+                <div class="kpi-label">Pendientes</div>
+                <div class="kpi-value">@solPendientes</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card blue">
+            <div class="kpi-icon blue"><i class="fas fa-users"></i></div>
+            <div>
+                <div class="kpi-label">Total Solicitudes</div>
+                <div class="kpi-value">@totalSol</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card green">
+            <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
+            <div>
+                <div class="kpi-label">Perfil</div>
+                <div class="kpi-value" style="font-size:18px; margin-top:4px;">
+                    @(empresa?.DatosCompletos == true ? "Completo" : "Incompleto")
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Acciones rápidas + Solicitudes recientes ══ -->
+<div class="row g-4">
+
+    <!-- Acciones rápidas -->
+    <div class="col-12 col-lg-4">
+        <div class="section-header">
+            <div class="section-title">Acciones rápidas</div>
+        </div>
+        <div class="d-flex flex-column gap-3">
+            <a href="/Dashboard/EmpresaPlazas" class="quick-action">
+                <div class="qa-icon" style="background:rgba(124,58,237,.1); color:var(--emp-accent);">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <div>
+                    <div class="qa-title">Crear Plaza</div>
+                    <div class="qa-desc">Publica una nueva vacante para practicantes</div>
+                </div>
+            </a>
+            <a href="/Dashboard/EmpresaSolicitudes" class="quick-action">
+                <div class="qa-icon" style="background:rgba(251,191,36,.12); color:#d97706;">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <div>
+                    <div class="qa-title">Ver Solicitudes</div>
+                    <div class="qa-desc">Revisa y responde solicitudes de alumnos</div>
+                </div>
+            </a>
+            <a href="/Dashboard/EmpresaDocumentos" class="quick-action">
+                <div class="qa-icon" style="background:rgba(13,148,136,.1); color:#0d9488;">
+                    <i class="fas fa-file-arrow-up"></i>
+                </div>
+                <div>
+                    <div class="qa-title">Subir Documentos</div>
+                    <div class="qa-desc">Convenio, acta constitutiva y más</div>
+                </div>
+            </a>
+            <a href="/Dashboard/EmpresaPerfil" class="quick-action">
+                <div class="qa-icon" style="background:rgba(0,35,102,.07); color:var(--navy);">
+                    <i class="fas fa-building-user"></i>
+                </div>
+                <div>
+                    <div class="qa-title">Perfil Empresa</div>
+                    <div class="qa-desc">Edita la información de tu empresa</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Solicitudes recientes -->
+    <div class="col-12 col-lg-8">
+        <div class="section-header">
+            <div class="section-title">Solicitudes recientes</div>
+            <a href="/Dashboard/EmpresaSolicitudes" class="btn-view-all">
+                Ver todas <i class="fas fa-arrow-right fa-xs"></i>
+            </a>
+        </div>
+        <div class="gmt-table-wrapper">
+            @if (!solicitudes.Any())
+            {
+                <div class="text-center py-5" style="color:var(--text-muted);">
+                    <i class="fas fa-inbox fa-2x mb-3 d-block" style="opacity:.3;"></i>
+                    <div style="font-size:13px;">Aún no hay solicitudes de alumnos</div>
+                    <div style="font-size:12px; margin-top:4px;">Publica una plaza activa para comenzar a recibirlas</div>
+                </div>
+            }
+            else
+            {
+                <table class="gmt-table">
+                    <thead>
+                        <tr>
+                            <th>Alumno</th>
+                            <th>Plaza</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sol in solicitudes)
+                        {
+                            <tr>
+                                <td>
+                                    <div style="font-weight:600;">@(sol.Alumno?.NombreCompleto ?? "—")</div>
+                                    <div style="font-size:11.5px; color:var(--text-muted);">@(sol.Alumno?.NumeroControl ?? "")</div>
+                                </td>
+                                <td style="font-size:12.5px; color:var(--text-secondary);">@(sol.Plaza?.Titulo ?? sol.Area ?? "—")</td>
+                                <td style="font-size:12px; color:var(--text-muted);">@sol.FechaSolicitud.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <span class="status-pill pill-@sol.Estado">
+                                        @(sol.Estado switch {
+                                            "solicitado" => "Pendiente",
+                                            "aceptado"   => "Aceptado",
+                                            "rechazado"  => "Rechazado",
+                                            "en_curso"   => "En curso",
+                                            "concluido"  => "Concluido",
+                                            _            => sol.Estado
+                                        })
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+</div>

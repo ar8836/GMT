@@ -16,6 +16,10 @@ namespace GMT.Data
         public DbSet<DocumentoAlumno> DocumentosAlumno { get; set; }
         public DbSet<RegistroPendiente> RegistrosPendientes { get; set; }
 
+        // ── Nuevos (Portal Empresa v1) ────────────────────────────────────────
+        public DbSet<PlazaPractica> PlazasPracticas { get; set; }
+        public DbSet<DocumentoEmpresa> DocumentosEmpresa { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -64,6 +68,17 @@ namespace GMT.Data
                  .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // ── plazas_practicas ─────────────────────────────────────────────
+            modelBuilder.Entity<PlazaPractica>(e =>
+            {
+                e.ToTable("plazas_practicas");
+
+                e.HasOne(p => p.Empresa)
+                 .WithMany(em => em.Plazas)
+                 .HasForeignKey(p => p.EmpresaId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // ── solicitudes_practicas ────────────────────────────────────────
             modelBuilder.Entity<SolicitudPractica>(e =>
             {
@@ -83,6 +98,11 @@ namespace GMT.Data
                  .WithMany(c => c.Solicitudes)
                  .HasForeignKey(s => s.ConvenioId)
                  .OnDelete(DeleteBehavior.SetNull);
+
+                e.HasOne(s => s.Plaza)
+                 .WithMany(p => p.Solicitudes)
+                 .HasForeignKey(s => s.PlazaId)
+                 .OnDelete(DeleteBehavior.SetNull);
             });
 
             // ── DocumentosAlumno ─────────────────────────────────────────────
@@ -93,6 +113,17 @@ namespace GMT.Data
                 e.HasOne(d => d.Alumno)
                  .WithMany(a => a.Documentos)
                  .HasForeignKey(d => d.AlumnoId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ── documentos_empresa ───────────────────────────────────────────
+            modelBuilder.Entity<DocumentoEmpresa>(e =>
+            {
+                e.ToTable("documentos_empresa");
+
+                e.HasOne(d => d.Empresa)
+                 .WithMany(em => em.DocumentosEmpresa)
+                 .HasForeignKey(d => d.EmpresaId)
                  .OnDelete(DeleteBehavior.Cascade);
             });
 
