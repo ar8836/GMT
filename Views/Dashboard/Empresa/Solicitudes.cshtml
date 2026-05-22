@@ -5,109 +5,139 @@
     ViewData["ActiveModule"] = "solicitudes";
     ViewData["PortalTipo"]   = "empresa";
 
-    var empresa    = ViewBag.Empresa     as Empresa;
-    var solicitudes = ViewBag.Solicitudes as List<SolicitudPractica> ?? new();
+    var empresa       = ViewBag.Empresa       as Empresa;
+    var solicitudes   = ViewBag.Solicitudes   as List<SolicitudPractica> ?? new();
+    var entrevistaIds = ViewBag.EntrevistaIds  as List<int> ?? new();
+    var mensaje       = TempData["Mensaje"]   as string;
+
+    // Agrupar solicitudes por plaza
+    var porPlaza = solicitudes
+        .GroupBy(s => s.PlazaId)
+        .OrderByDescending(g => g.Any(s => s.Estado == "solicitado"))
+        .ToList();
 
     var pendientes = solicitudes.Where(s => s.Estado == "solicitado").ToList();
     var activas    = solicitudes.Where(s => s.Estado == "aceptado" || s.Estado == "en_curso").ToList();
     var historial  = solicitudes.Where(s => s.Estado == "rechazado" || s.Estado == "concluido").ToList();
+
+    if (empresa != null)
+    {
+        ViewData["SolicitudesPendientes"] = pendientes.Count;
+    }
 }
 
 @section Styles {
 <style>
-    .page-header { margin-bottom: 28px; }
-    .page-title  { font-size: 22px; font-weight: 800; margin: 0; }
+    :root { --emp-accent:#7c3aed; --emp-primary:#4c1d95; }
 
-    .tab-bar { display: flex; gap: 4px; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 24px; width: fit-content; }
-    .tab-item {
-        padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
-        color: var(--text-muted); cursor: pointer; border: none; background: none; transition: var(--transition);
-        position: relative;
+    .page-header { margin-bottom:24px; }
+    .page-title  { font-size:22px; font-weight:800; margin:0; }
+
+    /* Tab bar */
+    .tab-bar { display:flex; gap:4px; background:var(--bg); border-radius:10px; padding:4px; margin-bottom:28px; width:fit-content; }
+    .tab-item { padding:7px 18px; border-radius:8px; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; border:none; background:none; transition:var(--transition); }
+    .tab-item.active { background:#fff; color:var(--emp-accent); box-shadow:0 1px 4px rgba(0,0,0,.1); }
+    .tab-badge { background:#ef4444; color:#fff; font-size:10px; font-weight:800; width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-left:4px; }
+
+    /* Section tab */
+    .sol-section { display:none; }
+    .sol-section.active { display:block; }
+
+    /* Plaza group header */
+    .plaza-group { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:20px; box-shadow:var(--shadow-sm); }
+    .plaza-group-header {
+        padding:16px 22px; background:var(--bg);
+        border-bottom:1px solid var(--border);
+        display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
     }
-    .tab-item.active { background: #fff; color: var(--emp-accent); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+    .plaza-titulo-h { font-size:15px; font-weight:700; }
+    .plaza-meta-h { font-size:12px; color:var(--text-muted); display:flex; gap:12px; flex-wrap:wrap; margin-top:3px; }
 
-    .tab-badge {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 18px; height: 18px; border-radius: 50%;
-        font-size: 10px; font-weight: 800;
-        background: #ef4444; color: #fff;
-        margin-left: 4px;
-    }
-
-    /* Sol card */
+    /* Solicitante card */
     .sol-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 0;
-        overflow: hidden;
-        transition: var(--transition);
+        padding:18px 22px;
+        border-bottom:1px solid var(--border);
+        display:flex; align-items:flex-start; gap:16px;
+        transition:background .15s;
     }
-    .sol-card:hover { box-shadow: var(--shadow-md); }
+    .sol-card:last-child { border-bottom:none; }
+    .sol-card:hover { background:rgba(124,58,237,.02); }
 
-    .sol-card-header {
-        padding: 18px 22px 14px;
-        display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-        border-bottom: 1px solid var(--border);
-    }
-
+    /* Avatar alumno */
     .alumno-avatar {
-        width: 42px; height: 42px; border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 800; font-size: 14px; color: #fff; flex-shrink: 0;
+        width:44px; height:44px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-weight:800; font-size:14px; color:#fff; flex-shrink:0; overflow:hidden;
     }
+    .alumno-avatar img { width:100%; height:100%; object-fit:cover; }
+    .av-isc   { background:#4a90d9; }
+    .av-iia   { background:#7c3aed; }
+    .av-ici   { background:#0d9488; }
+    .av-iem   { background:#d97706; }
+    .av-ige   { background:#dc2626; }
+    .av-other { background:#64748b; }
 
-    .alumno-nombre  { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
-    .alumno-detalle { font-size: 12px; color: var(--text-muted); }
+    .alumno-info { flex:1; min-width:0; }
+    .alumno-nombre { font-size:14.5px; font-weight:700; margin-bottom:2px; }
+    .alumno-detalle { font-size:12px; color:var(--text-muted); display:flex; flex-wrap:wrap; gap:8px; }
 
-    .sol-card-body { padding: 14px 22px; }
-
-    .sol-info-row {
-        display: flex; flex-wrap: wrap; gap: 14px;
-        font-size: 12.5px; color: var(--text-secondary); margin-bottom: 10px;
+    /* Documentos del alumno dentro de la card */
+    .alumno-docs { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .doc-chip {
+        display:inline-flex; align-items:center; gap:6px;
+        background:var(--bg); border:1px solid var(--border);
+        border-radius:6px; padding:5px 10px;
+        font-size:12px; font-weight:600; color:var(--text-secondary);
+        text-decoration:none; transition:var(--transition);
     }
-    .sol-info-item { display: flex; align-items: center; gap: 5px; }
-
-    .sol-card-footer {
-        padding: 12px 22px;
-        border-top: 1px solid var(--border);
-        background: var(--bg);
-        display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    }
+    .doc-chip:hover { border-color:var(--emp-accent); color:var(--emp-accent); }
+    .doc-chip i { font-size:13px; }
+    .doc-chip.cv       i { color:#002366; }
+    .doc-chip.constancia i { color:#0d9488; }
+    .doc-chip.missing  { opacity:.45; cursor:default; pointer-events:none; border-style:dashed; }
 
     /* Estado pill */
-    .estado-pill {
-        display: inline-flex; align-items: center; gap: 5px;
-        padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
-    }
-    .estado-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
-    .pill-solicitado { background: #fef3c7; color: #92400e; } .pill-solicitado::before { background: #f59e0b; }
-    .pill-aceptado   { background: #dcfce7; color: #166534; } .pill-aceptado::before   { background: #22c55e; }
-    .pill-rechazado  { background: #fee2e2; color: #991b1b; } .pill-rechazado::before  { background: #ef4444; }
-    .pill-en_curso   { background: #dbeafe; color: #1e40af; } .pill-en_curso::before   { background: #3b82f6; }
-    .pill-concluido  { background: #f3f4f6; color: #374151; } .pill-concluido::before  { background: #9ca3af; }
+    .estado-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:600; }
+    .estado-pill::before { content:''; width:5px; height:5px; border-radius:50%; }
+    .pill-solicitado { background:#fef3c7; color:#92400e; } .pill-solicitado::before { background:#f59e0b; }
+    .pill-aceptado   { background:#dcfce7; color:#166534; } .pill-aceptado::before   { background:#22c55e; }
+    .pill-rechazado  { background:#fee2e2; color:#991b1b; } .pill-rechazado::before  { background:#ef4444; }
+    .pill-en_curso   { background:#dbeafe; color:#1e40af; } .pill-en_curso::before   { background:#3b82f6; }
+    .pill-concluido  { background:#f3f4f6; color:#374151; } .pill-concluido::before  { background:#9ca3af; }
 
-    .empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); }
-    .empty-state i { font-size: 2.5rem; opacity: .2; margin-bottom: 14px; display: block; }
+    .sol-actions { display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; align-items:center; }
+    .btn-emp    { border:none; border-radius:9px; padding:7px 14px; font-size:12.5px; font-weight:700; cursor:pointer; transition:var(--transition); display:inline-flex; align-items:center; gap:5px; }
+    .btn-accept { background:var(--emp-accent); color:#fff; }
+    .btn-accept:hover { background:var(--emp-primary); }
+    .btn-reject { background:none; border:1px solid #ef4444; color:#ef4444; }
+    .btn-reject:hover { background:#fee2e2; }
+    .btn-agenda { background:rgba(27,127,196,.1); color:#1b7fc4; border:1px solid rgba(27,127,196,.25); }
+    .btn-agenda:hover { background:rgba(27,127,196,.18); }
+    .btn-agenda.agendada { background:#dcfce7; color:#166534; border-color:#86efac; cursor:default; }
 
-    /* Sección plegable */
-    .sol-section { display: none; }
-    .sol-section.active { display: block; }
+    .empty-state { text-align:center; padding:50px 20px; color:var(--text-muted); }
+    .empty-state i { font-size:2.5rem; opacity:.2; display:block; margin-bottom:14px; }
 
-    /* Colores de avatar por carrera */
-    .av-isc   { background: #4a90d9; }
-    .av-iia   { background: #7c3aed; }
-    .av-ici   { background: #0d9488; }
-    .av-iem   { background: #d97706; }
-    .av-ige   { background: #dc2626; }
-    .av-other { background: #64748b; }
+    /* Toast */
+    .toast-msg { position:fixed; top:20px; right:20px; background:var(--emp-primary); color:#fff; padding:12px 20px; border-radius:10px; font-weight:600; font-size:13px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,.2); animation:slideIn .3s ease; }
+    @@keyframes slideIn { from{transform:translateX(120%);opacity:0;}to{transform:translateX(0);opacity:1;} }
+
+    /* Modal entrevista */
+    .modal-header-ent { background:linear-gradient(135deg,var(--emp-primary),var(--emp-accent)); color:#fff; border-radius:12px 12px 0 0; padding:20px 24px; }
+    .form-label-sm { font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px; display:block; }
 </style>
+}
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="toast-msg" id="toastMsg">@mensaje</div>
+    <script>setTimeout(() => document.getElementById('toastMsg')?.remove(), 4000);</script>
 }
 
 <div class="page-header">
     <h4 class="page-title">Solicitudes de Alumnos</h4>
-    <p class="mb-0" style="color:var(--text-muted); font-size:13px;">
-        Revisa, acepta o rechaza las solicitudes de prácticas profesionales
+    <p style="color:var(--text-muted);font-size:13px;margin:0;">
+        Revisa las solicitudes agrupadas por plaza. Acepta, rechaza y agenda entrevistas.
     </p>
 </div>
 
@@ -115,187 +145,289 @@
 <div class="tab-bar">
     <button class="tab-item active" data-section="pendientes">
         Pendientes
-        @if (pendientes.Any()) { <span class="tab-badge">@pendientes.Count</span> }
+        @if (pendientes.Any())
+        {
+            <span class="tab-badge">@pendientes.Count</span>
+        }
     </button>
     <button class="tab-item" data-section="activas">En curso (@activas.Count)</button>
     <button class="tab-item" data-section="historial">Historial (@historial.Count)</button>
+    <button class="tab-item" data-section="todas">Todas (@solicitudes.Count)</button>
 </div>
 
-<!-- ══ PENDIENTES ══ -->
-<div class="sol-section active" id="sec-pendientes">
-    @if (!pendientes.Any())
+@{
+    // Helper local para emitir un grupo de plazas + solicitantes
+    async Task RenderGrupos(List<SolicitudPractica> lista)
     {
-        <div class="empty-state">
-            <i class="fas fa-inbox"></i>
-            <div style="font-size:15px; font-weight:700; margin-bottom:6px;">Sin solicitudes pendientes</div>
-            <div style="font-size:13px;">Cuando un alumno solicite una de tus plazas, aparecerá aquí</div>
-        </div>
-    }
-    else
-    {
-        <div class="row g-3">
-            @foreach (var sol in pendientes)
-            {
-                var initials = string.Join("", (sol.Alumno?.NombreCompleto ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString().ToUpper() : ""));
-                var avClass  = sol.Alumno?.Carrera switch { "ISC" => "av-isc", "IIA" => "av-iia", "ICI" => "av-ici", "IEM" => "av-iem", "IGE" => "av-ige", _ => "av-other" };
-                <div class="col-12 col-lg-6">
-                    <div class="sol-card">
-                        <div class="sol-card-header">
-                            <div class="d-flex gap-3 align-items-center">
-                                <div class="alumno-avatar @avClass">@initials</div>
-                                <div>
-                                    <div class="alumno-nombre">@(sol.Alumno?.NombreCompleto ?? "Alumno")</div>
-                                    <div class="alumno-detalle">
-                                        @(sol.Alumno?.NumeroControl ?? "—") · @(sol.Alumno?.Carrera ?? "—") · @(sol.Alumno?.Semestre)° sem.
-                                    </div>
-                                </div>
-                            </div>
-                            <span class="estado-pill pill-solicitado">Pendiente</span>
+        if (!lista.Any())
+        {
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <div style="font-size:15px;font-weight:700;margin-bottom:6px;">Sin solicitudes en esta sección</div>
+            </div>
+            return;
+        }
+
+        var grupos = lista
+            .GroupBy(s => new { s.PlazaId, Titulo = s.Plaza?.Titulo ?? s.Area ?? "Sin plaza" })
+            .OrderByDescending(g => g.Any(s => s.Estado == "solicitado"));
+
+        foreach (var grupo in grupos)
+        {
+            var cuposOcupados = empresa != null
+                ? solicitudes.Count(s => s.PlazaId == grupo.Key.PlazaId && s.Estado == "aceptado")
+                : 0;
+            <div class="plaza-group">
+                <div class="plaza-group-header">
+                    <div>
+                        <div class="plaza-titulo-h">
+                            <i class="fas fa-briefcase me-2" style="color:var(--emp-accent);font-size:14px;"></i>
+                            @grupo.Key.Titulo
                         </div>
-                        <div class="sol-card-body">
-                            <div class="sol-info-row">
-                                @if (sol.Plaza != null)
-                                {
-                                    <span class="sol-info-item"><i class="fas fa-briefcase" style="color:var(--emp-accent);"></i> @sol.Plaza.Titulo</span>
-                                }
-                                <span class="sol-info-item"><i class="fas fa-calendar" style="color:var(--text-muted);"></i> @sol.FechaSolicitud.ToString("dd MMM yyyy")</span>
-                            </div>
-                        </div>
-                        <div class="sol-card-footer">
-                            <div style="font-size:11.5px; color:var(--text-muted);">
-                                Solicitud #@sol.Id
-                            </div>
-                            <div class="d-flex gap-2">
-                                <form asp-action="ResponderSolicitud" asp-controller="Dashboard" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="solicitudId" value="@sol.Id" />
-                                    <input type="hidden" name="decision" value="rechazado" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger fw-600" style="border-radius:8px; font-size:12px;">
-                                        <i class="fas fa-xmark me-1"></i> Rechazar
-                                    </button>
-                                </form>
-                                <form asp-action="ResponderSolicitud" asp-controller="Dashboard" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="solicitudId" value="@sol.Id" />
-                                    <input type="hidden" name="decision" value="aceptado" />
-                                    <button type="submit" class="btn btn-sm fw-600" style="background:var(--emp-accent); color:#fff; border-radius:8px; font-size:12px;">
-                                        <i class="fas fa-check me-1"></i> Aceptar
-                                    </button>
-                                </form>
-                            </div>
+                        <div class="plaza-meta-h">
+                            <span>@grupo.Count() solicitante@(grupo.Count() != 1 ? "s" : "")</span>
+                            <span>·</span>
+                            <span>@grupo.Count(s => s.Estado == "solicitado") pendiente@(grupo.Count(s => s.Estado == "solicitado") != 1 ? "s" : "")</span>
                         </div>
                     </div>
                 </div>
-            }
-        </div>
-    }
-</div>
 
-<!-- ══ EN CURSO ══ -->
-<div class="sol-section" id="sec-activas">
-    @if (!activas.Any())
-    {
-        <div class="empty-state">
-            <i class="fas fa-user-clock"></i>
-            <div style="font-size:15px; font-weight:700; margin-bottom:6px;">Sin prácticas activas</div>
-            <div style="font-size:13px;">Aquí aparecerán los alumnos que hayas aceptado</div>
-        </div>
-    }
-    else
-    {
-        <div class="row g-3">
-            @foreach (var sol in activas)
-            {
-                var initials = string.Join("", (sol.Alumno?.NombreCompleto ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString().ToUpper() : ""));
-                var avClass  = sol.Alumno?.Carrera switch { "ISC" => "av-isc", "IIA" => "av-iia", "ICI" => "av-ici", "IEM" => "av-iem", "IGE" => "av-ige", _ => "av-other" };
-                <div class="col-12 col-lg-6">
+                @foreach (var sol in grupo.OrderBy(s => s.FechaSolicitud))
+                {
+                    var initials = string.Join("", (sol.Alumno?.NombreCompleto ?? "??").Split(' ').Take(2).Select(s2 => s2.Length > 0 ? s2[0].ToString().ToUpper() : ""));
+                    var avClass  = sol.Alumno?.Carrera switch { "ISC" => "av-isc", "IIA" => "av-iia", "ICI" => "av-ici", "IEM" => "av-iem", "IGE" => "av-ige", _ => "av-other" };
+
+                    // Documentos del alumno
+                    var docs        = sol.Alumno?.Documentos?.ToList() ?? new();
+                    var cv          = docs.Where(d => d.TipoDocumento == "cv").OrderByDescending(d => d.FechaSubida).FirstOrDefault();
+                    var constancia  = docs.Where(d => d.TipoDocumento == "constancia_estudios").OrderByDescending(d => d.FechaSubida).FirstOrDefault();
+                    var yaAgendada  = entrevistaIds.Contains(sol.Id);
+
                     <div class="sol-card">
-                        <div class="sol-card-header">
-                            <div class="d-flex gap-3 align-items-center">
-                                <div class="alumno-avatar @avClass">@initials</div>
-                                <div>
-                                    <div class="alumno-nombre">@(sol.Alumno?.NombreCompleto ?? "Alumno")</div>
-                                    <div class="alumno-detalle">
-                                        @(sol.Alumno?.NumeroControl ?? "—") · @(sol.Alumno?.Carrera ?? "—") · @(sol.Alumno?.Semestre)° sem.
-                                    </div>
-                                </div>
-                            </div>
-                            <span class="estado-pill pill-@sol.Estado">@(sol.Estado == "en_curso" ? "En curso" : "Aceptado")</span>
+                        <!-- Avatar -->
+                        <div class="alumno-avatar @avClass">
+                            @if (!string.IsNullOrEmpty(sol.Alumno?.FotoPerfilUrl))
+                            {
+                                <img src="@sol.Alumno.FotoPerfilUrl" alt="Foto" />
+                            }
+                            else
+                            {
+                                @initials
+                            }
                         </div>
-                        <div class="sol-card-body">
-                            <div class="sol-info-row">
-                                @if (sol.Plaza != null)
-                                {
-                                    <span class="sol-info-item"><i class="fas fa-briefcase" style="color:var(--emp-accent);"></i> @sol.Plaza.Titulo</span>
-                                }
-                                @if (sol.FechaInicio.HasValue)
-                                {
-                                    <span class="sol-info-item"><i class="fas fa-calendar-check" style="color:#0d9488;"></i> Inicio: @sol.FechaInicio.Value.ToString("dd MMM yyyy")</span>
-                                }
-                            </div>
-                        </div>
-                        <div class="sol-card-footer">
-                            <div style="font-size:11.5px; color:var(--text-muted);">Aceptado el @sol.FechaSolicitud.ToString("dd MMM yyyy")</div>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
-    }
-</div>
 
-<!-- ══ HISTORIAL ══ -->
-<div class="sol-section" id="sec-historial">
-    @if (!historial.Any())
-    {
-        <div class="empty-state">
-            <i class="fas fa-clock-rotate-left"></i>
-            <div style="font-size:15px; font-weight:700; margin-bottom:6px;">Sin historial aún</div>
-        </div>
-    }
-    else
-    {
-        <div class="row g-3">
-            @foreach (var sol in historial)
-            {
-                var initials = string.Join("", (sol.Alumno?.NombreCompleto ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString().ToUpper() : ""));
-                var avClass  = sol.Alumno?.Carrera switch { "ISC" => "av-isc", "IIA" => "av-iia", "ICI" => "av-ici", "IEM" => "av-iem", "IGE" => "av-ige", _ => "av-other" };
-                <div class="col-12 col-lg-6">
-                    <div class="sol-card" style="opacity:.8;">
-                        <div class="sol-card-header">
-                            <div class="d-flex gap-3 align-items-center">
-                                <div class="alumno-avatar @avClass" style="filter:grayscale(.4);">@initials</div>
-                                <div>
-                                    <div class="alumno-nombre">@(sol.Alumno?.NombreCompleto ?? "Alumno")</div>
-                                    <div class="alumno-detalle">@(sol.Alumno?.NumeroControl ?? "—") · @(sol.Alumno?.Carrera ?? "—")</div>
-                                </div>
+                        <!-- Info alumno + docs -->
+                        <div class="alumno-info">
+                            <div class="alumno-nombre">@(sol.Alumno?.NombreCompleto ?? "Alumno")</div>
+                            <div class="alumno-detalle">
+                                <span>@(sol.Alumno?.NumeroControl ?? "—")</span>
+                                <span>·</span>
+                                <span>@(sol.Alumno?.Carrera ?? "—")</span>
+                                @if (sol.Alumno?.Semestre.HasValue == true)
+                                {
+                                    <span>· @(sol.Alumno.Semestre)° sem.</span>
+                                }
+                                @if (sol.Estado == "aceptado" && !string.IsNullOrEmpty(sol.Alumno?.Telefono))
+                                {
+                                    <span>·</span>
+                                    <span style="color:var(--emp-accent);font-weight:600;">
+                                        <i class="fas fa-phone me-1"></i>@sol.Alumno!.Telefono
+                                    </span>
+                                }
+                                <span>· @sol.FechaSolicitud.ToString("dd MMM yyyy")</span>
                             </div>
+
+                            <!-- Documentos adjuntos -->
+                            <div class="alumno-docs">
+                                @if (cv != null)
+                                {
+                                    <a class="doc-chip cv" href="@cv.Url" target="_blank" title="Ver CV">
+                                        <i class="fas fa-file-pdf"></i> CV
+                                        <i class="fas fa-external-link-alt" style="font-size:10px;opacity:.6;"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="doc-chip missing"><i class="fas fa-file-pdf"></i> CV sin subir</span>
+                                }
+
+                                @if (constancia != null)
+                                {
+                                    <a class="doc-chip constancia" href="@constancia.Url" target="_blank" title="Ver Constancia">
+                                        <i class="fas fa-file-lines"></i> Constancia
+                                        <i class="fas fa-external-link-alt" style="font-size:10px;opacity:.6;"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="doc-chip missing"><i class="fas fa-file-lines"></i> Constancia sin subir</span>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Estado + acciones -->
+                        <div class="sol-actions">
                             <span class="estado-pill pill-@sol.Estado">
-                                @(sol.Estado == "concluido" ? "Concluido" : "Rechazado")
+                                @(sol.Estado switch {
+                                    "solicitado" => "Pendiente",
+                                    "aceptado"   => "Aceptado",
+                                    "rechazado"  => "Rechazado",
+                                    "en_curso"   => "En curso",
+                                    "concluido"  => "Concluido",
+                                    _            => sol.Estado
+                                })
                             </span>
+
+                            @if (sol.Estado == "solicitado")
+                            {
+                                <form asp-action="ResponderSolicitud" asp-controller="Dashboard" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="solicitudId" value="@sol.Id" />
+                                    <input type="hidden" name="decision"    value="rechazado" />
+                                    <button class="btn-emp btn-reject"><i class="fas fa-xmark"></i> Rechazar</button>
+                                </form>
+                                <form asp-action="ResponderSolicitud" asp-controller="Dashboard" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="solicitudId" value="@sol.Id" />
+                                    <input type="hidden" name="decision"    value="aceptado" />
+                                    <button class="btn-emp btn-accept"><i class="fas fa-check"></i> Aceptar</button>
+                                </form>
+                            }
+
+                            @if (sol.Estado == "aceptado" || sol.Estado == "en_curso")
+                            {
+                                if (yaAgendada)
+                                {
+                                    <button class="btn-emp btn-agenda agendada" disabled>
+                                        <i class="fas fa-calendar-check"></i> Entrevista agendada
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn-emp btn-agenda"
+                                            onclick="abrirModalEntrevista(@sol.Id, '@Html.Raw((sol.Alumno?.NombreCompleto ?? "Alumno").Replace("'","\\'"  ))')"
+                                            type="button">
+                                        <i class="fas fa-calendar-plus"></i> Agendar entrevista
+                                    </button>
+                                }
+                            }
                         </div>
-                        <div class="sol-card-body">
-                            <div class="sol-info-row">
-                                @if (sol.Plaza != null) { <span class="sol-info-item"><i class="fas fa-briefcase"></i> @sol.Plaza.Titulo</span> }
-                                <span class="sol-info-item"><i class="fas fa-calendar"></i> @sol.FechaSolicitud.ToString("dd MMM yyyy")</span>
+                    </div>
+                }
+            </div>
+        }
+    }
+}
+
+<!-- Sección Pendientes -->
+<div class="sol-section active" id="sec-pendientes">
+    @{ await RenderGrupos(pendientes); }
+</div>
+
+<!-- Sección En curso -->
+<div class="sol-section" id="sec-activas">
+    @{ await RenderGrupos(activas); }
+</div>
+
+<!-- Sección Historial -->
+<div class="sol-section" id="sec-historial">
+    @{ await RenderGrupos(historial); }
+</div>
+
+<!-- Sección Todas -->
+<div class="sol-section" id="sec-todas">
+    @{ await RenderGrupos(solicitudes); }
+</div>
+
+<!-- ═══ MODAL AGENDAR ENTREVISTA ═══ -->
+<div class="modal fade" id="modalEntrevista" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:500px;">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header-ent">
+                <h5 class="mb-0 fw-700"><i class="fas fa-calendar-plus me-2"></i>Agendar Entrevista</h5>
+                <div id="modalAlumnoNombre" style="font-size:13px;opacity:.8;margin-top:4px;"></div>
+            </div>
+            <form asp-action="AgendarEntrevista" asp-controller="Dashboard" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="solicitudId" id="entrevistaSolicitudId" />
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label-sm">Fecha y hora *</label>
+                            <input type="datetime-local" name="fechaHora" class="form-control" required
+                                   min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-sm">Modalidad *</label>
+                            <select name="modalidad" class="form-select" required id="selModalidad"
+                                    onchange="actualizarLinkLabel(this.value)">
+                                <option value="presencial">Presencial</option>
+                                <option value="teams">Microsoft Teams</option>
+                                <option value="zoom">Zoom</option>
+                                <option value="meet">Google Meet</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-sm" id="lblUbicacion">Dirección / Ubicación</label>
+                            <input type="text" name="ubicacionOLink" class="form-control" id="inputUbicacion"
+                                   placeholder="Dirección de la empresa" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label-sm">Notas para el alumno</label>
+                            <textarea name="notas" class="form-control" rows="2"
+                                      placeholder="Instrucciones adicionales, documentos a traer, dress code…"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <div style="background:rgba(27,127,196,.07);border:1px solid rgba(27,127,196,.2);border-radius:8px;padding:10px 14px;font-size:12.5px;color:#1b7fc4;">
+                                <i class="fas fa-circle-info me-2"></i>
+                                El alumno recibirá una notificación por correo con los detalles de la entrevista
+                                y un enlace para confirmar su asistencia.
                             </div>
                         </div>
                     </div>
                 </div>
-            }
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light fw-600" data-bs-dismiss="modal" style="border-radius:9px;">Cancelar</button>
+                    <button type="submit" class="btn fw-600"
+                            style="background:var(--emp-accent);color:#fff;border-radius:9px;padding:9px 22px;">
+                        <i class="fas fa-calendar-check me-1"></i> Agendar y notificar
+                    </button>
+                </div>
+            </form>
         </div>
-    }
+    </div>
 </div>
 
 @section Scripts {
 <script>
+    // Tabs
     document.querySelectorAll('.tab-item').forEach(tab => {
         tab.addEventListener('click', function () {
             document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.sol-section').forEach(s => s.classList.remove('active'));
             this.classList.add('active');
-            document.getElementById('sec-' + this.dataset.section).classList.add('active');
+            document.getElementById('sec-' + this.dataset.section)?.classList.add('active');
         });
     });
+
+    // Modal entrevista
+    function abrirModalEntrevista(solicitudId, nombreAlumno) {
+        document.getElementById('entrevistaSolicitudId').value = solicitudId;
+        document.getElementById('modalAlumnoNombre').textContent = 'Para: ' + nombreAlumno;
+        new bootstrap.Modal(document.getElementById('modalEntrevista')).show();
+    }
+
+    // Cambiar label según modalidad
+    function actualizarLinkLabel(modalidad) {
+        const lbl   = document.getElementById('lblUbicacion');
+        const input = document.getElementById('inputUbicacion');
+        if (modalidad === 'presencial') {
+            lbl.textContent   = 'Dirección / Ubicación';
+            input.placeholder = 'Dirección de la empresa';
+        } else {
+            lbl.textContent   = 'Link de videollamada';
+            input.placeholder = 'https://teams.microsoft.com/... o zoom.us/...';
+        }
+    }
 </script>
 }

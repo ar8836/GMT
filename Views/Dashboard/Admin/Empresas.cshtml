@@ -1,0 +1,242 @@
+@using GMT.Models
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]        = "Empresas — Admin";
+    ViewData["ActiveModule"] = "empresas";
+    ViewData["PortalTipo"]   = "admin";
+    ViewData["UserName"]     = "Vinculación TecNM";
+    ViewData["UserRole"]     = "Administrador";
+
+    var empresas = ViewBag.Empresas as List<Empresa> ?? new();
+    var filtro   = ViewBag.Filtro as string ?? "pendientes";
+    var mensaje  = TempData["Mensaje"] as string;
+}
+
+@section Styles {
+<style>
+    :root { --admin-accent: #002366; --admin-bright: #4a90d9; }
+
+    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+    .page-title  { font-size:22px; font-weight:800; margin:0; }
+
+    .tab-bar { display:flex; gap:4px; background:var(--bg); border-radius:10px; padding:4px; margin-bottom:24px; width:fit-content; }
+    .tab-item { padding:7px 18px; border-radius:8px; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; border:none; background:none; text-decoration:none; transition:var(--transition); }
+    .tab-item.active { background:#fff; color:var(--admin-accent); box-shadow:0 1px 4px rgba(0,0,0,.1); }
+
+    /* Empresa card */
+    .empresa-card {
+        background: var(--bg-card); border:1px solid var(--border);
+        border-radius: var(--radius); overflow:hidden;
+        transition: var(--transition); margin-bottom:16px;
+    }
+    .empresa-card:hover { box-shadow:var(--shadow-md); }
+
+    .card-header-row {
+        padding:18px 22px 14px;
+        display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+        border-bottom:1px solid var(--border);
+    }
+    .emp-logo {
+        width:44px; height:44px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-weight:800; font-size:15px; color:#fff; flex-shrink:0;
+        background:linear-gradient(135deg, var(--admin-accent), var(--admin-bright));
+    }
+    .emp-nombre  { font-size:15px; font-weight:700; margin-bottom:2px; }
+    .emp-detalle { font-size:12px; color:var(--text-muted); display:flex; gap:10px; flex-wrap:wrap; }
+
+    .card-body-row { padding:14px 22px; display:flex; flex-wrap:wrap; gap:20px; }
+    .info-item     { font-size:12.5px; color:var(--text-secondary); display:flex; align-items:center; gap:5px; }
+    .info-label    { font-weight:700; color:var(--text-muted); font-size:11px; text-transform:uppercase; }
+
+    .card-footer-row {
+        padding:12px 22px; background:var(--bg);
+        border-top:1px solid var(--border);
+        display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
+
+    .doc-badge {
+        display:inline-flex; align-items:center; gap:5px;
+        padding:3px 10px; border-radius:20px; font-size:11.5px; font-weight:600;
+    }
+    .doc-badge.ok  { background:#dcfce7; color:#166534; }
+    .doc-badge.no  { background:#fef3c7; color:#92400e; }
+
+    .estado-pill {
+        display:inline-flex; align-items:center; gap:5px;
+        padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700;
+    }
+    .pill-pendiente  { background:#fef3c7; color:#92400e; }
+    .pill-verificada { background:#dcfce7; color:#166534; }
+
+    .btn-aprobar  { background:var(--admin-accent); color:#fff; border:none; border-radius:9px; padding:8px 18px; font-size:13px; font-weight:700; cursor:pointer; transition:var(--transition); }
+    .btn-aprobar:hover { background:#001a4d; }
+    .btn-rechazar { background:none; border:1px solid #ef4444; color:#ef4444; border-radius:9px; padding:8px 18px; font-size:13px; font-weight:700; cursor:pointer; transition:var(--transition); }
+    .btn-rechazar:hover { background:#fee2e2; }
+
+    .empty-state { text-align:center; padding:60px 20px; color:var(--text-muted); }
+    .empty-state i { font-size:3rem; opacity:.2; display:block; margin-bottom:16px; }
+
+    /* Modal rechazo */
+    .gmt-modal-header { background:linear-gradient(135deg,#991b1b,#ef4444); color:#fff; border-radius:12px 12px 0 0; padding:18px 24px; }
+    .toast-msg { position:fixed; top:20px; right:20px; background:var(--admin-accent); color:#fff; padding:12px 20px; border-radius:10px; font-weight:600; font-size:13px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,.2); animation:slideIn .3s ease; }
+    @@keyframes slideIn { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+</style>
+}
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="toast-msg" id="toastMsg">@mensaje</div>
+    <script>setTimeout(() => document.getElementById('toastMsg')?.remove(), 4000);</script>
+}
+
+<div class="page-header">
+    <div>
+        <h4 class="page-title">Verificación de Empresas</h4>
+        <p class="mb-0" style="color:var(--text-muted);font-size:13px;">
+            Revisa y aprueba las empresas que quieren publicar plazas de prácticas
+        </p>
+    </div>
+</div>
+
+<!-- Tabs filtro -->
+<div class="tab-bar">
+    <a href="/Admin/Empresas?filtro=pendientes" class="tab-item @(filtro=="pendientes"?"active":"")">Pendientes</a>
+    <a href="/Admin/Empresas?filtro=verificadas" class="tab-item @(filtro=="verificadas"?"active":"")">Verificadas</a>
+    <a href="/Admin/Empresas?filtro=todas" class="tab-item @(filtro=="todas"?"active":"")">Todas</a>
+</div>
+
+@if (!empresas.Any())
+{
+    <div class="empty-state">
+        <i class="fas fa-building-circle-check"></i>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px;">
+            @(filtro == "pendientes" ? "No hay empresas pendientes de revisión" : "Sin resultados")
+        </div>
+    </div>
+}
+else
+{
+    @foreach (var emp in empresas)
+    {
+        var initials = string.Join("", emp.NombreEmpresa.Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString() : ""));
+        var docsCount = emp.DocumentosEmpresa?.Count ?? 0;
+
+        <div class="empresa-card">
+            <div class="card-header-row">
+                <div class="d-flex gap-3 align-items-center">
+                    <div class="emp-logo">@initials</div>
+                    <div>
+                        <div class="emp-nombre">@emp.NombreEmpresa</div>
+                        <div class="emp-detalle">
+                            <span>RFC: <strong>@emp.RFC</strong></span>
+                            <span>·</span>
+                            <span>@emp.Login?.CorreoInstitucional</span>
+                        </div>
+                    </div>
+                </div>
+                <span class="estado-pill @(emp.EstaVerificado ? "pill-verificada" : "pill-pendiente")">
+                    <i class="fas @(emp.EstaVerificado ? "fa-circle-check" : "fa-clock")"></i>
+                    @(emp.EstaVerificado ? "Verificada" : "Pendiente")
+                </span>
+            </div>
+
+            <div class="card-body-row">
+                @if (!string.IsNullOrEmpty(emp.Sector)) {
+                    <div class="info-item"><i class="fas fa-industry" style="color:var(--admin-bright);"></i> @emp.Sector</div>
+                }
+                @if (!string.IsNullOrEmpty(emp.Giro)) {
+                    <div class="info-item"><i class="fas fa-briefcase" style="color:var(--admin-bright);"></i> @emp.Giro</div>
+                }
+                @if (!string.IsNullOrEmpty(emp.Ciudad)) {
+                    <div class="info-item"><i class="fas fa-location-dot" style="color:var(--admin-bright);"></i> @emp.Ciudad</div>
+                }
+                @if (!string.IsNullOrEmpty(emp.NombreContacto)) {
+                    <div class="info-item"><i class="fas fa-user-tie" style="color:var(--admin-bright);"></i> @emp.NombreContacto — @emp.PuestoContacto</div>
+                }
+                @if (!string.IsNullOrEmpty(emp.TelefonoContacto)) {
+                    <div class="info-item"><i class="fas fa-phone" style="color:var(--admin-bright);"></i> @emp.TelefonoContacto</div>
+                }
+                <div class="info-item"><i class="fas fa-calendar" style="color:var(--text-muted);"></i> Registro: @emp.FechaRegistro.ToString("dd MMM yyyy")</div>
+            </div>
+
+            <div class="card-footer-row">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="doc-badge @(docsCount > 0 ? "ok" : "no")">
+                        <i class="fas @(docsCount > 0 ? "fa-file-circle-check" : "fa-file-circle-xmark")"></i>
+                        @docsCount documento@(docsCount != 1 ? "s" : "") subido@(docsCount != 1 ? "s" : "")
+                    </span>
+                </div>
+
+                @if (!emp.EstaVerificado)
+                {
+                    <div class="d-flex gap-2">
+                        <button class="btn-rechazar"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalRechazar"
+                                data-empresa-id="@emp.Id"
+                                data-empresa-nombre="@emp.NombreEmpresa">
+                            <i class="fas fa-xmark me-1"></i> Rechazar
+                        </button>
+                        <form asp-action="AprobarEmpresa" asp-controller="Admin" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="empresaId" value="@emp.Id" />
+                            <input type="hidden" name="notas" value="Verificación manual completada" />
+                            <button type="submit" class="btn-aprobar">
+                                <i class="fas fa-circle-check me-1"></i> Aprobar
+                            </button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <span style="font-size:12px;color:var(--text-muted);">
+                        <i class="fas fa-circle-check" style="color:#22c55e;"></i> Ya verificada
+                    </span>
+                }
+            </div>
+        </div>
+    }
+}
+
+<!-- Modal rechazo con motivo -->
+<div class="modal fade" id="modalRechazar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="gmt-modal-header">
+                <h5 class="mb-0 fw-700"><i class="fas fa-xmark-circle me-2"></i>Rechazar empresa</h5>
+            </div>
+            <form asp-action="RechazarEmpresa" asp-controller="Admin" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body p-4">
+                    <input type="hidden" name="empresaId" id="modal-empresa-id" />
+                    <p id="modal-empresa-nombre" style="font-size:14px;font-weight:700;margin-bottom:12px;"></p>
+                    <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px;">
+                        Motivo del rechazo *
+                    </label>
+                    <textarea name="motivo" class="form-control" rows="4" required
+                              placeholder="Indica el motivo — ej: RFC no coincide con la razón social, documentos insuficientes…"></textarea>
+                    <p style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">
+                        Este motivo se enviará al correo de la empresa para que pueda corregir su información.
+                    </p>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light fw-600" data-bs-dismiss="modal" style="border-radius:9px;">Cancelar</button>
+                    <button type="submit" class="btn fw-600" style="background:#ef4444;color:#fff;border-radius:9px;padding:9px 22px;">
+                        <i class="fas fa-xmark me-1"></i> Confirmar Rechazo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('modalRechazar')?.addEventListener('show.bs.modal', function(e) {
+        const btn = e.relatedTarget;
+        document.getElementById('modal-empresa-id').value = btn.dataset.empresaId;
+        document.getElementById('modal-empresa-nombre').textContent = 'Empresa: ' + btn.dataset.empresaNombre;
+    });
+</script>
+}

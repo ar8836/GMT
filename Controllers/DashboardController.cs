@@ -1,5 +1,6 @@
 ﻿using GMT.Data;
 using GMT.Models;
+using GMT.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,19 +13,19 @@ namespace GMT.Controllers
     public class DashboardController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly EmailService _emailService;
         private readonly ILogger<DashboardController> _logger;
 
-        public DashboardController(ApplicationDbContext context, ILogger<DashboardController> logger)
+        public DashboardController(
+            ApplicationDbContext context,
+            EmailService emailService,
+            ILogger<DashboardController> logger)
         {
             _context = context;
+            _emailService = emailService;
             _logger = logger;
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        //  HELPERS
-        // ══════════════════════════════════════════════════════════════════════
-
-        /// <summary>Obtiene el Login del usuario autenticado. Redirige a login si no existe.</summary>
         private async Task<Login?> GetLoginAsync()
         {
             var correo = User.FindFirstValue(ClaimTypes.Name);
@@ -42,24 +43,30 @@ namespace GMT.Controllers
             var login = await GetLoginAsync();
             if (login == null) return RedirectToAction("Index", "Account");
 
-            var alumno = await _context.Alumnos
-                .FirstOrDefaultAsync(a => a.LoginId == login.Id);
+            var alumno = await _context.Alumnos.FirstOrDefaultAsync(a => a.LoginId == login.Id);
 
             ViewData["UserName"] = alumno?.NombreCompleto ?? login.CorreoInstitucional;
             ViewData["UserRole"] = alumno != null ? $"Alumno · {alumno.Carrera}" : "Alumno";
             ViewData["ActiveModule"] = "dashboard";
 
-            // Estadísticas básicas
             if (alumno != null)
             {
                 var solicitudes = await _context.SolicitudesPracticas
-                    .Where(s => s.AlumnoId == alumno.Id)
-                    .ToListAsync();
+                    .Where(s => s.AlumnoId == alumno.Id).ToListAsync();
 
                 ViewBag.TotalSolicitudes = solicitudes.Count;
                 ViewBag.SolicitudActiva = solicitudes.FirstOrDefault(s => s.Estado == "en_curso" || s.Estado == "aceptado");
                 ViewBag.TotalDocumentos = await _context.DocumentosAlumno.CountAsync(d => d.AlumnoId == alumno.Id);
                 ViewBag.Alumno = alumno;
+
+                // Próximas entrevistas del alumno
+                ViewBag.Entrevistas = await _context.Entrevistas
+                    .Include(e => e.Empresa)
+                    .Include(e => e.Solicitud).ThenInclude(s => s!.Plaza)
+                    .Where(e => e.AlumnoId == alumno.Id && e.Estado != "cancelada" && e.FechaHora >= DateTimeOffset.UtcNow)
+                    .OrderBy(e => e.FechaHora)
+                    .Take(3)
+                    .ToListAsync();
             }
 
             return View("Alumno/Index");
@@ -73,12 +80,19 @@ namespace GMT.Controllers
 
             var alumno = await _context.Alumnos
                 .Include(a => a.Login)
+                .Include(a => a.Documentos)
                 .FirstOrDefaultAsync(a => a.LoginId == login.Id);
 
             ViewData["UserName"] = alumno?.NombreCompleto ?? login.CorreoInstitucional;
             ViewData["UserRole"] = alumno != null ? $"Alumno · {alumno.Carrera}" : "Alumno";
             ViewData["ActiveModule"] = "perfil";
             ViewBag.Alumno = alumno;
+
+            // Solo CV y constancia de estudios
+            ViewBag.Documentos = alumno?.Documentos
+                .Where(d => d.TipoDocumento == "cv" || d.TipoDocumento == "constancia_estudios")
+                .OrderByDescending(d => d.FechaSubida)
+                .ToList() ?? new List<DocumentoAlumno>();
 
             return View("Alumno/PerfilAcademico");
         }
@@ -97,27 +111,99 @@ namespace GMT.Controllers
 
             if (alumno != null)
             {
-                var solicitudes = await _context.SolicitudesPracticas
+                ViewBag.Solicitudes = await _context.SolicitudesPracticas
                     .Include(s => s.Empresa)
                     .Include(s => s.Plaza)
                     .Where(s => s.AlumnoId == alumno.Id)
                     .OrderByDescending(s => s.FechaSolicitud)
                     .ToListAsync();
 
-                ViewBag.Solicitudes = solicitudes;
-
-                // Plazas activas disponibles para el alumno (para el modal "Nueva Solicitud")
-                var plazasDisponibles = await _context.PlazasPracticas
+                // Plazas activas disponibles
+                ViewBag.PlazasDisponibles = await _context.PlazasPracticas
                     .Include(p => p.Empresa)
                     .Where(p => p.Estado == "activa" && p.CuposOcupados < p.CuposDisponibles)
                     .OrderByDescending(p => p.FechaPublicacion)
-                    .Take(20)
+                    .Take(50)
                     .ToListAsync();
 
-                ViewBag.PlazasDisponibles = plazasDisponibles;
+                ViewBag.AlumnoId = alumno.Id;
+
+                // Documentos del alumno (para mostrar en modal de aplicar)
+                ViewBag.DocsCv = await _context.DocumentosAlumno
+                    .Where(d => d.AlumnoId == alumno.Id && d.TipoDocumento == "cv")
+                    .OrderByDescending(d => d.FechaSubida)
+                    .FirstOrDefaultAsync();
+
+                ViewBag.DocsConstancia = await _context.DocumentosAlumno
+                    .Where(d => d.AlumnoId == alumno.Id && d.TipoDocumento == "constancia_estudios")
+                    .OrderByDescending(d => d.FechaSubida)
+                    .FirstOrDefaultAsync();
             }
 
             return View("Alumno/Peticiones");
+        }
+
+        // ── Aplicar a una plaza ───────────────────────────────────────────────
+        [HttpPost]
+        [Authorize(Roles = "alumno")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AplicarSolicitud(int plazaId)
+        {
+            var login = await GetLoginAsync();
+            if (login == null) return Unauthorized();
+
+            var alumno = await _context.Alumnos.FirstOrDefaultAsync(a => a.LoginId == login.Id);
+            if (alumno == null) return Unauthorized();
+
+            var plaza = await _context.PlazasPracticas
+                .Include(p => p.Empresa)
+                .FirstOrDefaultAsync(p => p.Id == plazaId);
+
+            if (plaza == null || plaza.Estado != "activa")
+                return BadRequest(new { error = "La plaza no está disponible" });
+
+            // Verificar que no haya aplicado ya
+            var yaAplicó = await _context.SolicitudesPracticas
+                .AnyAsync(s => s.AlumnoId == alumno.Id && s.PlazaId == plazaId);
+            if (yaAplicó)
+                return BadRequest(new { error = "Ya aplicaste a esta plaza" });
+
+            var solicitud = new SolicitudPractica
+            {
+                AlumnoId = alumno.Id,
+                EmpresaId = plaza.EmpresaId,
+                PlazaId = plaza.Id,
+                Estado = "solicitado",
+                FechaSolicitud = DateTimeOffset.UtcNow,
+                Area = plaza.Area
+            };
+
+            _context.SolicitudesPracticas.Add(solicitud);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("Peticiones");
+        }
+
+        // ── Confirmar entrevista (alumno) ─────────────────────────────────────
+        [HttpPost]
+        [Authorize(Roles = "alumno")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmarEntrevista(int entrevistaId)
+        {
+            var login = await GetLoginAsync();
+            var alumno = await _context.Alumnos.FirstOrDefaultAsync(a => a.LoginId == login!.Id);
+
+            var entrevista = await _context.Entrevistas
+                .Include(e => e.Empresa)
+                .FirstOrDefaultAsync(e => e.Id == entrevistaId && e.AlumnoId == alumno!.Id);
+
+            if (entrevista == null) return NotFound();
+
+            entrevista.ConfirmadoAlumno = true;
+            entrevista.Estado = "confirmada";
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("Peticiones");
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -130,18 +216,12 @@ namespace GMT.Controllers
             var login = await GetLoginAsync();
             if (login == null) return RedirectToAction("Index", "Account");
 
-            var empresa = await _context.Empresas
-                .FirstOrDefaultAsync(e => e.LoginId == login.Id);
-
+            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login.Id);
             if (empresa == null) return RedirectToAction("Index", "Account");
 
             SetEmpresaViewData(empresa, "dashboard");
 
-            // KPIs del dashboard
-            var plazas = await _context.PlazasPracticas
-                .Where(p => p.EmpresaId == empresa.Id)
-                .ToListAsync();
-
+            var plazas = await _context.PlazasPracticas.Where(p => p.EmpresaId == empresa.Id).ToListAsync();
             var solicitudes = await _context.SolicitudesPracticas
                 .Include(s => s.Alumno)
                 .Include(s => s.Plaza)
@@ -165,20 +245,15 @@ namespace GMT.Controllers
         public async Task<IActionResult> EmpresaPlazas()
         {
             var login = await GetLoginAsync();
-            if (login == null) return RedirectToAction("Index", "Account");
-
-            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login.Id);
+            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login!.Id);
             if (empresa == null) return RedirectToAction("Index", "Account");
 
             SetEmpresaViewData(empresa, "plazas");
-
-            var plazas = await _context.PlazasPracticas
+            ViewBag.Empresa = empresa;
+            ViewBag.Plazas = await _context.PlazasPracticas
                 .Where(p => p.EmpresaId == empresa.Id)
                 .OrderByDescending(p => p.FechaCreacion)
                 .ToListAsync();
-
-            ViewBag.Empresa = empresa;
-            ViewBag.Plazas = plazas;
 
             return View("Empresa/Plazas");
         }
@@ -187,22 +262,28 @@ namespace GMT.Controllers
         public async Task<IActionResult> EmpresaSolicitudes()
         {
             var login = await GetLoginAsync();
-            if (login == null) return RedirectToAction("Index", "Account");
-
-            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login.Id);
+            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login!.Id);
             if (empresa == null) return RedirectToAction("Index", "Account");
 
             SetEmpresaViewData(empresa, "solicitudes");
 
+            // Cargar solicitudes con documentos del alumno
             var solicitudes = await _context.SolicitudesPracticas
-                .Include(s => s.Alumno)
+                .Include(s => s.Alumno).ThenInclude(a => a!.Documentos)
                 .Include(s => s.Plaza)
                 .Where(s => s.EmpresaId == empresa.Id)
                 .OrderByDescending(s => s.FechaSolicitud)
                 .ToListAsync();
 
+            // Entrevistas ya agendadas por esta empresa
+            var entrevistaIds = await _context.Entrevistas
+                .Where(e => e.EmpresaId == empresa.Id)
+                .Select(e => e.SolicitudId)
+                .ToListAsync();
+
             ViewBag.Empresa = empresa;
             ViewBag.Solicitudes = solicitudes;
+            ViewBag.EntrevistaIds = entrevistaIds;
 
             return View("Empresa/Solicitudes");
         }
@@ -211,20 +292,15 @@ namespace GMT.Controllers
         public async Task<IActionResult> EmpresaDocumentos()
         {
             var login = await GetLoginAsync();
-            if (login == null) return RedirectToAction("Index", "Account");
-
-            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login.Id);
+            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login!.Id);
             if (empresa == null) return RedirectToAction("Index", "Account");
 
             SetEmpresaViewData(empresa, "documentos");
-
-            var documentos = await _context.DocumentosEmpresa
+            ViewBag.Empresa = empresa;
+            ViewBag.Documentos = await _context.DocumentosEmpresa
                 .Where(d => d.EmpresaId == empresa.Id)
                 .OrderByDescending(d => d.FechaSubida)
                 .ToListAsync();
-
-            ViewBag.Empresa = empresa;
-            ViewBag.Documentos = documentos;
 
             return View("Empresa/Documentos");
         }
@@ -233,24 +309,17 @@ namespace GMT.Controllers
         public async Task<IActionResult> EmpresaPerfil()
         {
             var login = await GetLoginAsync();
-            if (login == null) return RedirectToAction("Index", "Account");
-
             var empresa = await _context.Empresas
                 .Include(e => e.Login)
-                .FirstOrDefaultAsync(e => e.LoginId == login.Id);
-
+                .FirstOrDefaultAsync(e => e.LoginId == login!.Id);
             if (empresa == null) return RedirectToAction("Index", "Account");
 
             SetEmpresaViewData(empresa, "perfil");
             ViewBag.Empresa = empresa;
-
             return View("Empresa/Perfil");
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        //  ACCIONES API (AJAX) — PLAZAS
-        // ══════════════════════════════════════════════════════════════════════
-
+        // ── Crear plaza ───────────────────────────────────────────────────────
         [HttpPost]
         [Authorize(Roles = "empresa")]
         [ValidateAntiForgeryToken]
@@ -261,9 +330,7 @@ namespace GMT.Controllers
             bool PublicarAhora)
         {
             var login = await GetLoginAsync();
-            if (login == null) return Unauthorized();
-
-            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login.Id);
+            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login!.Id);
             if (empresa == null) return Unauthorized();
 
             var plaza = new PlazaPractica
@@ -284,30 +351,26 @@ namespace GMT.Controllers
 
             _context.PlazasPracticas.Add(plaza);
             await _context.SaveChangesAsync();
-
             return RedirectToAction("EmpresaPlazas");
         }
 
+        // ── Cambiar estado plaza ──────────────────────────────────────────────
         [HttpPost]
         [Authorize(Roles = "empresa")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CambiarEstadoPlaza(int plazaId, string nuevoEstado)
         {
             var login = await GetLoginAsync();
-            if (login == null) return Unauthorized();
-
-            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login.Id);
+            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login!.Id);
             var plaza = await _context.PlazasPracticas.FindAsync(plazaId);
 
-            if (plaza == null || plaza.EmpresaId != empresa?.Id)
-                return NotFound();
+            if (plaza == null || plaza.EmpresaId != empresa?.Id) return NotFound();
 
-            var estadosValidos = new[] { "activa", "pausada", "cerrada", "borrador" };
-            if (!estadosValidos.Contains(nuevoEstado)) return BadRequest();
+            var validos = new[] { "activa", "pausada", "cerrada", "borrador" };
+            if (!validos.Contains(nuevoEstado)) return BadRequest();
 
             plaza.Estado = nuevoEstado;
             plaza.FechaActualizacion = DateTimeOffset.UtcNow;
-
             if (nuevoEstado == "activa" && plaza.FechaPublicacion == null)
                 plaza.FechaPublicacion = DateTimeOffset.UtcNow;
 
@@ -315,19 +378,14 @@ namespace GMT.Controllers
             return RedirectToAction("EmpresaPlazas");
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        //  ACCIONES API (AJAX) — SOLICITUDES (empresa responde)
-        // ══════════════════════════════════════════════════════════════════════
-
+        // ── Responder solicitud ───────────────────────────────────────────────
         [HttpPost]
         [Authorize(Roles = "empresa")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ResponderSolicitud(int solicitudId, string decision)
         {
             var login = await GetLoginAsync();
-            if (login == null) return Unauthorized();
-
-            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login.Id);
+            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login!.Id);
             var sol = await _context.SolicitudesPracticas
                 .Include(s => s.Plaza)
                 .FirstOrDefaultAsync(s => s.Id == solicitudId);
@@ -337,7 +395,6 @@ namespace GMT.Controllers
             if (decision == "aceptado")
             {
                 sol.Estado = "aceptado";
-                // Incrementar cupos ocupados en la plaza
                 if (sol.PlazaId.HasValue && sol.Plaza != null)
                 {
                     sol.Plaza.CuposOcupados++;
@@ -354,19 +411,76 @@ namespace GMT.Controllers
             return RedirectToAction("EmpresaSolicitudes");
         }
 
+        // ── Agendar entrevista (empresa agenda, alumno recibe notif) ──────────
+        [HttpPost]
+        [Authorize(Roles = "empresa")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AgendarEntrevista(
+            int solicitudId, string fechaHora, string modalidad,
+            string? ubicacionOLink, string? notas)
+        {
+            var login = await GetLoginAsync();
+            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login!.Id);
+            var sol = await _context.SolicitudesPracticas
+                .Include(s => s.Alumno).ThenInclude(a => a!.Login)
+                .Include(s => s.Plaza)
+                .FirstOrDefaultAsync(s => s.Id == solicitudId);
+
+            if (sol == null || sol.EmpresaId != empresa?.Id) return NotFound();
+
+            var entrevista = new Entrevista
+            {
+                SolicitudId = solicitudId,
+                AlumnoId = sol.AlumnoId,
+                EmpresaId = empresa.Id,
+                FechaHora = DateTimeOffset.Parse(fechaHora),
+                Modalidad = modalidad,
+                UbicacionOLink = ubicacionOLink,
+                Notas = notas,
+                Estado = "pendiente",
+                ConfirmadoAlumno = false
+            };
+
+            _context.Entrevistas.Add(entrevista);
+            await _context.SaveChangesAsync();
+
+            // Notificar al alumno por email
+            try
+            {
+                var correoAlumno = sol.Alumno?.Login?.CorreoInstitucional ?? "";
+                if (!string.IsNullOrEmpty(correoAlumno))
+                {
+                    await _emailService.SendEntrevistaAgendadaAsync(
+                        correoAlumno,
+                        sol.Alumno?.NombreCompleto ?? "Alumno",
+                        empresa.NombreEmpresa,
+                        sol.Plaza?.Titulo ?? "Prácticas",
+                        entrevista.FechaHora,
+                        modalidad,
+                        ubicacionOLink ?? "",
+                        notas ?? "");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo enviar email de entrevista para solicitud {Id}", solicitudId);
+            }
+
+            TempData["Mensaje"] = "✓ Entrevista agendada. El alumno fue notificado.";
+            return RedirectToAction("EmpresaSolicitudes");
+        }
+
+        // ── Guardar perfil empresa ────────────────────────────────────────────
         [HttpPost]
         [Authorize(Roles = "empresa")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> GuardarPerfilEmpresa(
             string NombreEmpresa, string? RazonSocial, string? RFC,
-            string? Ciudad, string? Sector, string? Giro,
-            string? Direccion, string? NombreContacto,
-            string? PuestoContacto, string? TelefonoContacto)
+            string? Ciudad, string? Sector, string? Giro, string? Direccion,
+            string? NombreContacto, string? PuestoContacto, string? TelefonoContacto)
         {
             var login = await GetLoginAsync();
-            if (login == null) return RedirectToAction("Index", "Account");
-
-            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login.Id);
+            var empresa = await _context.Empresas.FirstOrDefaultAsync(e => e.LoginId == login!.Id);
             if (empresa == null) return RedirectToAction("Index", "Account");
 
             empresa.NombreEmpresa = NombreEmpresa;
@@ -379,8 +493,6 @@ namespace GMT.Controllers
             empresa.NombreContacto = NombreContacto;
             empresa.PuestoContacto = PuestoContacto;
             empresa.TelefonoContacto = TelefonoContacto;
-
-            // Marcar perfil completo si tiene los campos mínimos
             empresa.DatosCompletos =
                 !string.IsNullOrEmpty(empresa.NombreEmpresa) &&
                 !string.IsNullOrEmpty(empresa.RFC) &&
@@ -389,10 +501,6 @@ namespace GMT.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction("EmpresaPerfil");
         }
-
-        // ══════════════════════════════════════════════════════════════════════
-        //  HELPER PRIVADO
-        // ══════════════════════════════════════════════════════════════════════
 
         private void SetEmpresaViewData(Empresa empresa, string activeModule)
         {

@@ -1,0 +1,192 @@
+@using GMT.Models
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]        = "Lista Negra";
+    ViewData["ActiveModule"] = "lista-negra";
+    ViewData["PortalTipo"]   = "admin";
+
+    var listaNegra = ViewBag.ListaNegra as List<ListaNegraEmpresa> ?? new();
+    var mensaje    = TempData["Mensaje"] as string;
+}
+
+@section Styles {
+<style>
+    :root { --adm-accent:#1b7fc4; --adm-primary:#0f4c75; }
+
+    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+    .page-title  { font-size:22px; font-weight:800; margin:0; }
+
+    .info-banner {
+        background:rgba(220,38,38,.06); border:1px solid rgba(220,38,38,.2);
+        border-radius:var(--radius); padding:16px 20px; margin-bottom:24px;
+        display:flex; align-items:flex-start; gap:12px;
+    }
+
+    .negra-card {
+        background:var(--bg-card); border:1px solid #fca5a5;
+        border-left:4px solid #ef4444;
+        border-radius:var(--radius); overflow:hidden;
+        margin-bottom:14px; transition:var(--transition);
+    }
+    .negra-card.inactiva { border-color:var(--border); border-left-color:#9ca3af; opacity:.7; }
+    .negra-card:hover { box-shadow:var(--shadow-md); }
+
+    .negra-header { padding:16px 22px; display:flex; align-items:flex-start; justify-content:space-between; gap:14px; border-bottom:1px solid var(--border); }
+
+    .emp-logo {
+        width:42px; height:42px; border-radius:12px;
+        background:linear-gradient(135deg,#991b1b,#ef4444);
+        display:flex; align-items:center; justify-content:center;
+        font-weight:800; font-size:14px; color:#fff; flex-shrink:0;
+    }
+    .emp-logo.inactiva { background:linear-gradient(135deg,#6b7280,#9ca3af); }
+
+    .emp-nombre  { font-size:15px; font-weight:700; margin-bottom:2px; }
+    .emp-detalle { font-size:12px; color:var(--text-muted); }
+
+    .estado-badge {
+        display:inline-flex; align-items:center; gap:5px;
+        padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700;
+    }
+    .badge-bloqueada { background:#fee2e2; color:#991b1b; }
+    .badge-levantada { background:#f3f4f6; color:#374151; }
+
+    .negra-body   { padding:14px 22px; }
+    .motivo-box   { background:#fff5f5; border:1px solid #fca5a5; border-radius:8px; padding:10px 14px; font-size:13px; color:#7f1d1d; }
+
+    .negra-footer { padding:12px 22px; background:var(--bg); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+
+    .btn-levantar { background:none; border:1px solid #22c55e; color:#166534; border-radius:9px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; transition:var(--transition); }
+    .btn-levantar:hover { background:#dcfce7; }
+
+    .empty-state { text-align:center; padding:60px 20px; color:var(--text-muted); }
+    .empty-state i { font-size:3rem; opacity:.2; display:block; margin-bottom:16px; }
+
+    /* Modal agregar a lista negra */
+    .gmt-modal-header-red { background:linear-gradient(135deg,#7f1d1d,#ef4444); color:#fff; border-radius:12px 12px 0 0; padding:18px 24px; }
+    .form-label-sm { font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px; display:block; }
+
+    .toast-msg { position:fixed; top:20px; right:20px; background:var(--adm-primary); color:#fff; padding:12px 20px; border-radius:10px; font-weight:600; font-size:13px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,.2); animation:slideIn .3s ease; }
+    @@keyframes slideIn { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+</style>
+}
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="toast-msg" id="toastMsg">@mensaje</div>
+    <script>setTimeout(() => document.getElementById('toastMsg')?.remove(), 4000);</script>
+}
+
+<div class="page-header">
+    <div>
+        <h4 class="page-title">Lista Negra</h4>
+        <p class="mb-0" style="color:var(--text-muted);font-size:13px;">
+            Empresas bloqueadas por comportamiento sospechoso o suplantación de identidad
+        </p>
+    </div>
+</div>
+
+<!-- Banner informativo -->
+<div class="info-banner">
+    <i class="fas fa-triangle-exclamation fa-lg mt-1" style="color:#ef4444;flex-shrink:0;"></i>
+    <div style="font-size:13px;color:var(--text-secondary);">
+        Las empresas en lista negra <strong>no pueden iniciar sesión</strong> ni publicar plazas.
+        El bloqueo se puede levantar en cualquier momento para restaurar el acceso.
+        Se conserva el historial de todos los bloqueos para auditoría.
+    </div>
+</div>
+
+@if (!listaNegra.Any())
+{
+    <div class="empty-state">
+        <i class="fas fa-shield-check" style="opacity:.2;color:#22c55e;"></i>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px;">Lista negra vacía</div>
+        <div style="font-size:13px;">No hay empresas bloqueadas actualmente</div>
+    </div>
+}
+else
+{
+    var activas   = listaNegra.Where(l => l.Activo).ToList();
+    var inactivas = listaNegra.Where(l => !l.Activo).ToList();
+
+    if (activas.Any())
+    {
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#ef4444;margin-bottom:12px;">
+            Actualmente bloqueadas (@activas.Count)
+        </div>
+
+        @foreach (var entrada in activas)
+        {
+            var initials = string.Join("", (entrada.Empresa?.NombreEmpresa ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString() : ""));
+            <div class="negra-card">
+                <div class="negra-header">
+                    <div class="d-flex gap-3 align-items-center">
+                        <div class="emp-logo">@initials</div>
+                        <div>
+                            <div class="emp-nombre">@(entrada.Empresa?.NombreEmpresa ?? "—")</div>
+                            <div class="emp-detalle">
+                                RFC: <strong>@(entrada.Empresa?.RFC ?? "—")</strong>
+                                · @(entrada.Empresa?.Login?.CorreoInstitucional ?? "—")
+                            </div>
+                        </div>
+                    </div>
+                    <span class="estado-badge badge-bloqueada">
+                        <i class="fas fa-ban"></i> Bloqueada
+                    </span>
+                </div>
+                <div class="negra-body">
+                    <div style="font-size:11.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Motivo</div>
+                    <div class="motivo-box">@entrada.Motivo</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;">
+                        <span><i class="fas fa-user-shield me-1"></i>Bloqueada por: <strong>@(entrada.AgregadoPor ?? "admin")</strong></span>
+                        <span><i class="fas fa-calendar me-1"></i>@entrada.FechaIngreso.ToString("dd 'de' MMMM 'de' yyyy, HH:mm", new System.Globalization.CultureInfo("es-MX"))</span>
+                    </div>
+                </div>
+                <div class="negra-footer">
+                    <div style="font-size:12px;color:#ef4444;font-weight:600;">
+                        <i class="fas fa-lock me-1"></i> Empresa sin acceso al sistema
+                    </div>
+                    <form asp-action="LevantarListaNegra" asp-controller="Admin" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="listaNegraId" value="@entrada.Id" />
+                        <button type="submit" class="btn-levantar"
+                                onclick="return confirm('¿Confirmas levantar el bloqueo de @(entrada.Empresa?.NombreEmpresa ?? "esta empresa")?')">
+                            <i class="fas fa-lock-open me-1"></i> Levantar bloqueo
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+    }
+
+    @if (inactivas.Any())
+    {
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin:24px 0 12px;">
+            Historial — bloqueos levantados (@inactivas.Count)
+        </div>
+        @foreach (var entrada in inactivas)
+        {
+            var initials = string.Join("", (entrada.Empresa?.NombreEmpresa ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString() : ""));
+            <div class="negra-card inactiva">
+                <div class="negra-header">
+                    <div class="d-flex gap-3 align-items-center">
+                        <div class="emp-logo inactiva">@initials</div>
+                        <div>
+                            <div class="emp-nombre" style="opacity:.7;">@(entrada.Empresa?.NombreEmpresa ?? "—")</div>
+                            <div class="emp-detalle">RFC: @(entrada.Empresa?.RFC ?? "—")</div>
+                        </div>
+                    </div>
+                    <span class="estado-badge badge-levantada">
+                        <i class="fas fa-lock-open"></i> Levantado
+                    </span>
+                </div>
+                <div class="negra-body">
+                    <div style="font-size:12px;color:var(--text-muted);">
+                        Motivo original: <em>@entrada.Motivo</em>
+                        · Ingresó el @entrada.FechaIngreso.ToString("dd MMM yyyy")
+                    </div>
+                </div>
+            </div>
+        }
+    }
+}

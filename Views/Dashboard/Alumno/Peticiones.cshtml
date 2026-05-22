@@ -1,903 +1,386 @@
-﻿@{
+﻿@using GMT.Models
+@{
     Layout = "~/Views/Shared/_Layout.cshtml";
-    ViewData["Title"] = "Peticiones";
+    ViewData["Title"]        = "Mis Peticiones";
     ViewData["ActiveModule"] = "peticiones";
-    ViewData["UserName"] = "Ariel Rubio Morales";
-    ViewData["UserRole"] = "Alumno - ISC";
-}
 
-@* ══════════════════════════════════════════════════════════
-   PETICIONES.CSHTML — Listado de Peticiones de Empresas
-   GMT | Gestor Modular Tecnológico
-   ══════════════════════════════════════════════════════════ *@
+    var solicitudes      = ViewBag.Solicitudes      as List<SolicitudPractica> ?? new();
+    var plazasDisponibles = ViewBag.PlazasDisponibles as List<PlazaPractica>    ?? new();
+    var alumnoId         = (int)(ViewBag.AlumnoId ?? 0);
+    var docCv            = ViewBag.DocsCv        as DocumentoAlumno;
+    var docConstancia    = ViewBag.DocsConstancia as DocumentoAlumno;
+    var mensaje          = TempData["Mensaje"]   as string;
+}
 
 @section Styles {
 <style>
-    /* ─── Filter bar ──────────────────────────────────── */
-    .filter-bar {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        padding: 16px 20px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        box-shadow: var(--shadow-sm);
+    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+    .page-title  { font-size:22px; font-weight:800; margin:0; }
+
+    /* Tabs */
+    .tab-bar { display:flex; gap:4px; background:var(--bg); border-radius:10px; padding:4px; margin-bottom:24px; width:fit-content; }
+    .tab-item { padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; border:none; background:none; transition:var(--transition); }
+    .tab-item.active { background:#fff; color:var(--navy); box-shadow:0 1px 4px rgba(0,0,0,.1); }
+
+    /* Plaza card */
+    .plaza-card {
+        background:var(--bg-card); border:1px solid var(--border);
+        border-radius:var(--radius); padding:20px 22px;
+        transition:var(--transition); cursor:pointer;
     }
+    .plaza-card:hover { box-shadow:var(--shadow-md); transform:translateY(-2px); border-color:var(--accent); }
+    .plaza-titulo { font-size:15px; font-weight:700; margin-bottom:4px; }
+    .plaza-empresa { font-size:13px; font-weight:600; color:var(--navy); margin-bottom:8px; }
+    .plaza-meta { display:flex; flex-wrap:wrap; gap:10px; font-size:12px; color:var(--text-muted); }
+    .plaza-meta-item { display:flex; align-items:center; gap:4px; }
 
-    .filter-label {
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: .5px;
-        white-space: nowrap;
-    }
+    /* Estado pills solicitud */
+    .estado-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:600; }
+    .estado-pill::before { content:''; width:5px; height:5px; border-radius:50%; }
+    .pill-solicitado { background:#fef3c7; color:#92400e; } .pill-solicitado::before { background:#f59e0b; }
+    .pill-aceptado   { background:#dcfce7; color:#166534; } .pill-aceptado::before   { background:#22c55e; }
+    .pill-rechazado  { background:#fee2e2; color:#991b1b; } .pill-rechazado::before  { background:#ef4444; }
+    .pill-en_curso   { background:#dbeafe; color:#1e40af; } .pill-en_curso::before   { background:#3b82f6; }
+    .pill-concluido  { background:#f3f4f6; color:#374151; } .pill-concluido::before  { background:#9ca3af; }
 
-    .filter-select {
-        padding: 7px 12px;
-        border: 1.5px solid var(--border);
-        border-radius: 8px;
-        font-size: 13px;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        color: var(--text-primary);
-        background: var(--bg);
-        outline: none;
-        cursor: pointer;
-        transition: var(--transition);
-    }
+    /* Tabla mis peticiones */
+    .gmt-table-wrapper { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow-sm); }
+    .gmt-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+    .gmt-table thead th { padding:13px 18px; font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--text-muted); background:var(--bg); border-bottom:1px solid var(--border); }
+    .gmt-table tbody tr { border-bottom:1px solid var(--border); transition:background .15s; }
+    .gmt-table tbody tr:last-child { border-bottom:none; }
+    .gmt-table tbody tr:hover { background:rgba(0,35,102,.02); }
+    .gmt-table tbody td { padding:14px 18px; vertical-align:middle; }
 
-    .filter-select:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(74,144,217,.1);
-    }
+    /* Empresa mini logo */
+    .emp-mini-logo { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; color:#fff; flex-shrink:0; }
 
-    .filter-search {
-        flex: 1;
-        min-width: 180px;
-        position: relative;
-    }
+    /* Toast */
+    .toast-msg { position:fixed; top:20px; right:20px; background:var(--navy); color:#fff; padding:12px 20px; border-radius:10px; font-weight:600; font-size:13px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,.2); animation:slideIn .3s ease; }
+    @@keyframes slideIn { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
 
-    .filter-search i {
-        position: absolute;
-        left: 12px; top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-muted);
-        font-size: 13px;
-        pointer-events: none;
-    }
+    /* Modal */
+    .modal-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); margin-bottom:10px; }
+    .doc-preview-item { display:flex; align-items:center; gap:10px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; }
+    .doc-preview-item .doc-name { font-size:13px; font-weight:600; flex:1; }
+    .badge-tipo { font-size:10px; font-weight:700; text-transform:uppercase; padding:2px 7px; border-radius:4px; }
+    .empty-state { text-align:center; padding:50px 20px; color:var(--text-muted); }
+    .empty-state i { font-size:2.5rem; opacity:.2; display:block; margin-bottom:14px; }
 
-    .filter-search input {
-        width: 100%;
-        padding: 8px 12px 8px 36px;
-        border: 1.5px solid var(--border);
-        border-radius: 8px;
-        font-size: 13px;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        color: var(--text-primary);
-        background: var(--bg);
-        outline: none;
-        transition: var(--transition);
-    }
-
-    .filter-search input::placeholder { color: var(--text-muted); }
-
-    .filter-search input:focus {
-        border-color: var(--accent);
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(74,144,217,.1);
-    }
-
-    /* ─── Summary chips ───────────────────────────────── */
-    .summary-chips {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .chip {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 18px;
-        border-radius: 30px;
-        font-size: 13px;
-        font-weight: 600;
-        border: 1.5px solid var(--border);
-        background: var(--bg-card);
-        box-shadow: var(--shadow-sm);
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
-
-    .chip-dot {
-        width: 8px; height: 8px;
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-
-    .chip.all     { color: var(--text-primary); }
-    .chip.open    { color: #16a34a; border-color: #86efac; background: #f0fdf4; }
-    .chip.closed  { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
-    .chip.process { color: #1d4ed8; border-color: #93c5fd; background: #eff6ff; }
-
-    .chip-count {
-        background: rgba(0,0,0,.06);
-        border-radius: 20px;
-        padding: 1px 7px;
-        font-size: 11px;
-    }
-
-    /* ─── Table overrides ─────────────────────────────── */
-    .gmt-table-wrapper {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-    }
-
-    .gmt-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13.5px;
-    }
-
-    .gmt-table thead th {
-        padding: 13px 18px;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: .8px;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        background: var(--bg);
-        border-bottom: 1px solid var(--border);
-        white-space: nowrap;
-    }
-
-    .gmt-table thead th.sortable {
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .gmt-table thead th.sortable:hover { color: var(--navy); }
-
-    .gmt-table tbody tr {
-        border-bottom: 1px solid var(--border);
-        transition: background .15s;
-        cursor: pointer;
-    }
-
-    .gmt-table tbody tr:last-child { border-bottom: none; }
-
-    .gmt-table tbody tr:hover { background: rgba(74,144,217,.04); }
-
-    .gmt-table tbody td {
-        padding: 14px 18px;
-        color: var(--text-primary);
-        vertical-align: middle;
-    }
-
-    /* Company cell */
-    .company-cell {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .company-avatar {
-        width: 36px; height: 36px;
-        border-radius: 10px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 13px;
-        font-weight: 800;
-        color: #fff;
-        flex-shrink: 0;
-        letter-spacing: .5px;
-    }
-
-    .company-name {
-        font-weight: 600;
-        color: var(--text-primary);
-        font-size: 13.5px;
-        line-height: 1.2;
-    }
-
-    .company-rfc {
-        font-size: 11px;
-        color: var(--text-muted);
-        font-family: 'Space Mono', monospace;
-    }
-
-    /* Pills de tipo */
-    .type-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 11.5px;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-
-    .type-residencia { background: rgba(0,35,102,.08);   color: var(--navy); }
-    .type-servicio   { background: rgba(13,148,136,.1);  color: #0d9488; }
-
-    /* Pills de estado */
-    .status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 11.5px;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-
-    .status-pill::before {
-        content: '';
-        width: 5px; height: 5px;
-        border-radius: 50%;
-    }
-
-    .pill-open    { background: #dcfce7; color: #166534; }
-    .pill-open::before    { background: #22c55e; }
-    .pill-closed  { background: #fee2e2; color: #991b1b; }
-    .pill-closed::before  { background: #ef4444; }
-    .pill-process { background: #dbeafe; color: #1e40af; }
-    .pill-process::before { background: #3b82f6; }
-
-    /* Barra de aplicantes */
-    .applicants-bar {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .app-bar-bg {
-        width: 60px; height: 5px;
-        background: var(--bg);
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid var(--border);
-    }
-
-    .app-bar-fill {
-        height: 100%;
-        border-radius: 10px;
-        background: linear-gradient(90deg, var(--navy), var(--accent));
-    }
-
-    .app-count {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--navy);
-        min-width: 20px;
-    }
-
-    /* Botón acción de fila */
-    .row-btn {
-        background: none;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        color: var(--text-muted);
-        font-size: 12px;
-        cursor: pointer;
-        padding: 5px 12px;
-        font-weight: 600;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        transition: var(--transition);
-        white-space: nowrap;
-    }
-
-    .row-btn:hover {
-        border-color: var(--accent);
-        color: var(--accent);
-        background: rgba(74,144,217,.05);
-    }
-
-    /* ─── Modal de detalle ────────────────────────────── */
-    .detail-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,.45);
-        z-index: 1050;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity .3s ease;
-    }
-
-    .detail-modal-backdrop.open {
-        opacity: 1;
-        pointer-events: all;
-    }
-
-    .detail-modal {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        width: 100%;
-        max-width: 580px;
-        box-shadow: var(--shadow-lg);
-        transform: scale(.95) translateY(20px);
-        transition: transform .3s cubic-bezier(.4,0,.2,1);
-        overflow: hidden;
-    }
-
-    .detail-modal-backdrop.open .detail-modal {
-        transform: scale(1) translateY(0);
-    }
-
-    .modal-header-gmt {
-        padding: 22px 26px 18px;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-
-    .modal-header-gmt .modal-avatar {
-        width: 44px; height: 44px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 16px;
-        font-weight: 800;
-        color: #fff;
-        flex-shrink: 0;
-    }
-
-    .modal-title-block { flex: 1; min-width: 0; }
-
-    .modal-title-gmt {
-        font-size: 16px;
-        font-weight: 800;
-        color: var(--text-primary);
-    }
-
-    .modal-sub {
-        font-size: 11.5px;
-        color: var(--text-muted);
-        margin-top: 2px;
-    }
-
-    .modal-close-btn {
-        background: none;
-        border: none;
-        font-size: 16px;
-        color: var(--text-muted);
-        cursor: pointer;
-        padding: 4px;
-        border-radius: 6px;
-        transition: var(--transition);
-    }
-
-    .modal-close-btn:hover { color: var(--navy); background: var(--bg); }
-
-    .modal-body-gmt { padding: 22px 26px; }
-
-    .modal-row {
-        display: flex;
-        gap: 10px;
-        padding: 9px 0;
-        border-bottom: 1px solid var(--border);
-        font-size: 13.5px;
-    }
-
-    .modal-row:last-child { border-bottom: none; }
-
-    .modal-row-label {
-        font-size: 11.5px;
-        font-weight: 700;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: .4px;
-        min-width: 130px;
-        flex-shrink: 0;
-        padding-top: 1px;
-    }
-
-    .modal-row-value {
-        color: var(--text-primary);
-        font-weight: 500;
-    }
-
-    .modal-footer-gmt {
-        padding: 16px 26px;
-        border-top: 1px solid var(--border);
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        background: var(--bg);
-    }
-
-    .btn-modal-primary {
-        padding: 9px 22px;
-        background: linear-gradient(135deg, var(--navy), var(--navy-mid, #00307a));
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 700;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .btn-modal-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 14px rgba(0,35,102,.3);
-    }
-
-    .btn-modal-secondary {
-        padding: 9px 18px;
-        background: var(--bg-card);
-        color: var(--text-secondary);
-        border: 1.5px solid var(--border);
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .btn-modal-secondary:hover { border-color: var(--accent); color: var(--accent); }
-
-    /* ─── Empty state ─────────────────────────────────── */
-    .empty-state {
-        text-align: center;
-        padding: 56px 20px;
-        color: var(--text-muted);
-    }
-
-    .empty-state i {
-        font-size: 40px;
-        margin-bottom: 14px;
-        color: var(--border);
-        display: block;
-    }
-
-    .empty-state p {
-        font-size: 14px;
-        font-weight: 500;
-    }
-
-    /* ─── Responsive ──────────────────────────────────── */
-    @@media (max-width: 767.98px) {
-        .filter-bar { gap: 8px; }
-        .summary-chips { gap: 6px; }
-        .chip { padding: 8px 12px; font-size: 12px; }
-    }
+    /* Alerta sin documentos */
+    .docs-alert { background:rgba(217,119,6,.07); border:1px solid rgba(217,119,6,.25); border-radius:var(--radius-sm); padding:12px 16px; font-size:13px; color:#92400e; margin-bottom:16px; display:flex; gap:10px; }
 </style>
 }
 
-@* ── Datos ficticios de demo ── *@
-@{
-    var peticiones = new[] {
-        new {
-            Id=1,  Initials="MS", Color="#002366", Empresa="Microsoft México",
-            RFC="MSM010101XX1", Ciudad="Ciudad de México",
-            Tipo="Residencias",     TipoClass="type-residencia",
-            Estado="Abierta",       EstadoClass="pill-open",
-            Aplicantes=12, MaxAplicantes=20,
-            Tarea="Desarrollo de software empresarial con .NET y Azure.",
-            Duracion="6 meses", Compensacion="$5,000 MXN/mes",
-            Requisitos="8° semestre, Inglés B2, conocimiento de C# y SQL."
-        },
-        new {
-            Id=2,  Initials="ST", Color="#0d9488", Empresa="Softtek",
-            RFC="SOF980202YY2", Ciudad="Monterrey, NL",
-            Tipo="Servicio Social", TipoClass="type-servicio",
-            Estado="Cerrada",       EstadoClass="pill-closed",
-            Aplicantes=5,  MaxAplicantes=5,
-            Tarea="Soporte técnico de primer nivel a usuarios corporativos.",
-            Duracion="480 horas", Compensacion="Sin remuneración",
-            Requisitos="6° semestre en adelante, habilidades de comunicación."
-        },
-        new {
-            Id=3,  Initials="IB", Color="#7c3aed", Empresa="IBM Guadalajara",
-            RFC="IBM120303ZZ3", Ciudad="Guadalajara, JAL",
-            Tipo="Residencias",     TipoClass="type-residencia",
-            Estado="Abierta",       EstadoClass="pill-open",
-            Aplicantes=8,  MaxAplicantes=15,
-            Tarea="Análisis de datos con Python, herramientas IBM Watson.",
-            Duracion="6 meses", Compensacion="$6,500 MXN/mes",
-            Requisitos="8° semestre, manejo de Python y estadística básica."
-        },
-        new {
-            Id=4,  Initials="CX", Color="#e11d48", Empresa="Cemex",
-            RFC="CEM450404AA4", Ciudad="Acapulco, GRO",
-            Tipo="Servicio Social", TipoClass="type-servicio",
-            Estado="Abierta",       EstadoClass="pill-open",
-            Aplicantes=2,  MaxAplicantes=10,
-            Tarea="Gestión de redes y comunicaciones en planta industrial.",
-            Duracion="480 horas", Compensacion="$1,200 MXN/mes",
-            Requisitos="Conocimiento de redes (CCNA deseable)."
-        },
-        new {
-            Id=5,  Initials="TC", Color="#0284c7", Empresa="Telmex",
-            RFC="TEL910505BB5", Ciudad="Acapulco, GRO",
-            Tipo="Servicio Social", TipoClass="type-servicio",
-            Estado="En Proceso",    EstadoClass="pill-process",
-            Aplicantes=9,  MaxAplicantes=12,
-            Tarea="Instalación y mantenimiento de redes de fibra óptica.",
-            Duracion="480 horas", Compensacion="Sin remuneración",
-            Requisitos="Redes, instalaciones físicas, disponibilidad de campo."
-        },
-        new {
-            Id=6,  Initials="OC", Color="#d97706", Empresa="Oracle México",
-            RFC="ORA000606CC6", Ciudad="Ciudad de México",
-            Tipo="Residencias",     TipoClass="type-residencia",
-            Estado="Abierta",       EstadoClass="pill-open",
-            Aplicantes=3,  MaxAplicantes=8,
-            Tarea="Administración y optimización de bases de datos Oracle.",
-            Duracion="6 meses", Compensacion="$7,000 MXN/mes",
-            Requisitos="Manejo de SQL avanzado, PL/SQL deseable, 8° semestre."
-        },
-    };
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="toast-msg" id="toastMsg">@mensaje</div>
+    <script>setTimeout(() => document.getElementById('toastMsg')?.remove(), 4000);</script>
 }
 
-<!-- ═══ CONTENT ══════════════════════════════════════════════ -->
-
-<!-- Page Header -->
-<div class="page-header fade-up">
-    <div class="breadcrumb-gmt">
-        <i class="fas fa-home"></i>
-        <a href="#">Inicio</a>
-        <i class="fas fa-chevron-right" style="font-size:9px;"></i>
-        <span>Peticiones</span>
-    </div>
-    <h1 class="page-title">Peticiones de Empresas</h1>
-    <p class="page-subtitle">Convocatorias abiertas para Residencias Profesionales y Servicio Social</p>
-</div>
-
-<!-- ── Summary chips ─────────────────────────────────────────── -->
-@{
-    int totalOpen    = peticiones.Count(p => p.Estado == "Abierta");
-    int totalClosed  = peticiones.Count(p => p.Estado == "Cerrada");
-    int totalProcess = peticiones.Count(p => p.Estado == "En Proceso");
-}
-<div class="summary-chips mb-4 fade-up stagger-1">
-    <div class="chip all" data-filter="all">
-        <div class="chip-dot" style="background:var(--navy);"></div>
-        Todas
-        <span class="chip-count">@peticiones.Length</span>
-    </div>
-    <div class="chip open" data-filter="Abierta">
-        <div class="chip-dot" style="background:#22c55e;"></div>
-        Abiertas
-        <span class="chip-count">@totalOpen</span>
-    </div>
-    <div class="chip process" data-filter="En Proceso">
-        <div class="chip-dot" style="background:#3b82f6;"></div>
-        En Proceso
-        <span class="chip-count">@totalProcess</span>
-    </div>
-    <div class="chip closed" data-filter="Cerrada">
-        <div class="chip-dot" style="background:#ef4444;"></div>
-        Cerradas
-        <span class="chip-count">@totalClosed</span>
+<div class="page-header">
+    <div>
+        <h4 class="page-title">Mis Peticiones</h4>
+        <p style="color:var(--text-muted);font-size:13px;margin:0;">Convocatorias abiertas y tus solicitudes activas</p>
     </div>
 </div>
 
-<!-- ── Filter bar ─────────────────────────────────────────────── -->
-<div class="filter-bar mb-4 fade-up stagger-2">
-    <span class="filter-label">Filtrar:</span>
-
-    <select class="filter-select" id="filterTipo">
-        <option value="">Todos los tipos</option>
-        <option value="Residencias">Residencias</option>
-        <option value="Servicio Social">Servicio Social</option>
-    </select>
-
-    <select class="filter-select" id="filterEstado">
-        <option value="">Todos los estados</option>
-        <option value="Abierta">Abierta</option>
-        <option value="En Proceso">En Proceso</option>
-        <option value="Cerrada">Cerrada</option>
-    </select>
-
-    <div class="filter-search">
-        <i class="fas fa-search"></i>
-        <input type="text" id="searchInput" placeholder="Buscar empresa, ciudad, tarea…" />
-    </div>
+<!-- Tabs -->
+<div class="tab-bar mb-4">
+    <button class="tab-item active" data-tab="convocatorias">
+        Convocatorias <span style="opacity:.6;">(@plazasDisponibles.Count)</span>
+    </button>
+    <button class="tab-item" data-tab="mis-solicitudes">
+        Mis Solicitudes <span style="opacity:.6;">(@solicitudes.Count)</span>
+    </button>
 </div>
 
-<!-- ── Tabla de peticiones ───────────────────────────────────── -->
-<div class="fade-up stagger-3">
-    <div class="section-header">
-        <span class="section-title">Listado de Peticiones</span>
-        <span style="font-size:12px; color:var(--text-muted);" id="countLabel">
-            Mostrando <strong id="visibleCount">@peticiones.Length</strong> de
-            <strong>@peticiones.Length</strong> peticiones
-        </span>
-    </div>
+<!-- ══ CONVOCATORIAS ════════════════════════════════════════════════════ -->
+<div id="tab-convocatorias">
+    @if (!plazasDisponibles.Any())
+    {
+        <div class="empty-state">
+            <i class="fas fa-briefcase"></i>
+            <div style="font-size:15px;font-weight:700;margin-bottom:6px;">No hay convocatorias disponibles</div>
+            <div style="font-size:13px;">Las empresas verificadas publicarán plazas pronto</div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var plaza in plazasDisponibles)
+            {
+                var yaAplicó = solicitudes.Any(s => s.PlazaId == plaza.Id);
+                var empInitials = string.Join("", (plaza.Empresa?.NombreEmpresa ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString() : ""));
+                var colorIdx = Math.Abs((plaza.Empresa?.NombreEmpresa ?? "").GetHashCode()) % 5;
+                var colors = new[] { "#002366","#7c3aed","#0d9488","#d97706","#dc2626" };
+                var empColor = colors[colorIdx];
 
-    <div class="gmt-table-wrapper">
-        <div class="table-responsive">
-            <table class="gmt-table" id="peticionesTable">
+                <div class="col-12 col-lg-6">
+                    <div class="plaza-card" onclick="abrirDetalle(@plaza.Id)">
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            @if (!string.IsNullOrEmpty(plaza.Empresa?.FotoPerfilUrl))
+                            {
+                                <img src="@plaza.Empresa!.FotoPerfilUrl" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;" />
+                            }
+                            else
+                            {
+                                <div class="emp-mini-logo" style="background:@empColor;">@empInitials</div>
+                            }
+                            <div style="flex:1;min-width:0;">
+                                <div class="plaza-titulo">@plaza.Titulo</div>
+                                <div class="plaza-empresa">@(plaza.Empresa?.NombreEmpresa ?? "—")</div>
+                            </div>
+                            @if (yaAplicó)
+                            {
+                                <span class="estado-pill pill-solicitado" style="font-size:11px;">Ya aplicaste</span>
+                            }
+                        </div>
+                        <div class="plaza-meta mb-3">
+                            @if (!string.IsNullOrEmpty(plaza.Area))
+                            {
+                                <span class="plaza-meta-item"><i class="fas fa-layer-group"></i> @plaza.Area</span>
+                            }
+                            <span class="plaza-meta-item">
+                                <i class="fas @(plaza.Modalidad == "remoto" ? "fa-wifi" : "fa-building")"></i>
+                                @(plaza.Modalidad[0].ToString().ToUpper() + plaza.Modalidad[1..])
+                            </span>
+                            @if (plaza.SemestreMinimo.HasValue)
+                            {
+                                <span class="plaza-meta-item"><i class="fas fa-graduation-cap"></i> Desde @(plaza.SemestreMinimo)° sem.</span>
+                            }
+                            <span class="plaza-meta-item">
+                                <i class="fas fa-users"></i>
+                                @(plaza.CuposDisponibles - plaza.CuposOcupados) lugar@(plaza.CuposDisponibles - plaza.CuposOcupados != 1 ? "es" : "") disponible@(plaza.CuposDisponibles - plaza.CuposOcupados != 1 ? "s" : "")
+                            </span>
+                        </div>
+                        <div style="font-size:12.5px;color:var(--text-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                            @plaza.Descripcion
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- ══ MIS SOLICITUDES ══════════════════════════════════════════════════ -->
+<div id="tab-mis-solicitudes" style="display:none;">
+    @if (!solicitudes.Any())
+    {
+        <div class="empty-state">
+            <i class="fas fa-file-circle-plus"></i>
+            <div style="font-size:15px;font-weight:700;margin-bottom:6px;">Sin solicitudes aún</div>
+            <div style="font-size:13px;">Explora las convocatorias y aplica a las que te interesen</div>
+        </div>
+    }
+    else
+    {
+        <div class="gmt-table-wrapper">
+            <table class="gmt-table">
                 <thead>
                     <tr>
-                        <th class="sortable">Empresa <i class="fas fa-sort" style="opacity:.4; font-size:9px;"></i></th>
-                        <th>Tipo</th>
-                        <th>Ciudad</th>
-                        <th style="text-align:center;">Aplicantes</th>
+                        <th>Empresa</th>
+                        <th>Plaza</th>
+                        <th>Fecha</th>
                         <th>Estado</th>
-                        <th>Duración</th>
-                        <th style="text-align:center;">Acción</th>
+                        <th></th>
                     </tr>
                 </thead>
-                <tbody id="tableBody">
-                    @foreach (var p in peticiones) {
-                        int appPct = (int)Math.Round((double)p.Aplicantes / p.MaxAplicantes * 100);
-                        <tr data-tipo="@p.Tipo" data-estado="@p.Estado"
-                            data-search="@p.Empresa.ToLower() @p.Ciudad.ToLower() @p.Tarea.ToLower()"
-                            onclick="openModal(@p.Id)">
+                <tbody>
+                    @foreach (var sol in solicitudes)
+                    {
+                        var empInitials = string.Join("", (sol.Empresa?.NombreEmpresa ?? "??").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString() : ""));
+                        var colorIdx = Math.Abs((sol.Empresa?.NombreEmpresa ?? "").GetHashCode()) % 5;
+                        var colors = new[] { "#002366","#7c3aed","#0d9488","#d97706","#dc2626" };
+                        <tr>
                             <td>
-                                <div class="company-cell">
-                                    <div class="company-avatar" style="background:@p.Color;">@p.Initials</div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="emp-mini-logo" style="background:@colors[colorIdx];">@empInitials</div>
                                     <div>
-                                        <div class="company-name">@p.Empresa</div>
-                                        <div class="company-rfc">@p.RFC</div>
+                                        <div style="font-weight:600;font-size:13.5px;">@(sol.Empresa?.NombreEmpresa ?? "—")</div>
+                                        <div style="font-size:11.5px;color:var(--text-muted);">@(sol.Empresa?.Ciudad ?? "")</div>
                                     </div>
                                 </div>
                             </td>
+                            <td style="font-size:13px;color:var(--text-secondary);">@(sol.Plaza?.Titulo ?? sol.Area ?? "—")</td>
+                            <td style="font-size:12px;color:var(--text-muted);">@sol.FechaSolicitud.ToString("dd MMM yyyy")</td>
                             <td>
-                                <span class="type-pill @p.TipoClass">
-                                    <i class="fas @(p.Tipo == "Residencias" ? "fa-briefcase" : "fa-hands-helping")"></i>
-                                    @p.Tipo
+                                <span class="estado-pill pill-@sol.Estado">
+                                    @(sol.Estado switch {
+                                        "solicitado" => "Pendiente",
+                                        "aceptado"   => "Aceptado",
+                                        "rechazado"  => "Rechazado",
+                                        "en_curso"   => "En curso",
+                                        "concluido"  => "Concluido",
+                                        _            => sol.Estado
+                                    })
                                 </span>
                             </td>
-                            <td style="font-size:13px; color:var(--text-secondary);">
-                                <i class="fas fa-location-dot me-1" style="color:var(--accent); font-size:11px;"></i>
-                                @p.Ciudad
-                            </td>
                             <td>
-                                <div class="applicants-bar" style="justify-content:center;">
-                                    <div class="app-bar-bg">
-                                        <div class="app-bar-fill" style="width:@appPct%;"></div>
-                                    </div>
-                                    <span class="app-count">@p.Aplicantes</span>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="status-pill @p.EstadoClass">@p.Estado</span>
-                            </td>
-                            <td style="font-size:13px; color:var(--text-secondary);">
-                                <i class="fas fa-clock me-1" style="color:var(--accent); font-size:11px;"></i>
-                                @p.Duracion
-                            </td>
-                            <td style="text-align:center;" onclick="event.stopPropagation()">
-                                <button class="row-btn" onclick="openModal(@p.Id)">
-                                    Ver detalle
-                                </button>
+                                @if (sol.Estado == "aceptado")
+                                {
+                                    <span style="font-size:12px;color:#22c55e;font-weight:600;">
+                                        <i class="fas fa-check me-1"></i>Aceptado
+                                    </span>
+                                }
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-
-        <!-- Empty state (oculto por defecto) -->
-        <div class="empty-state" id="emptyState" style="display:none;">
-            <i class="fas fa-filter-circle-xmark"></i>
-            <p>No se encontraron peticiones con los filtros seleccionados.</p>
-        </div>
-
-        <!-- Footer de la tabla -->
-        <div style="padding:14px 20px; background:var(--bg); border-top:1px solid var(--border);
-                    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-            <span style="font-size:12px; color:var(--text-muted);">
-                Total de convocatorias activas: <strong>@totalOpen</strong>
-            </span>
-            <div style="display:flex; gap:4px;">
-                <button class="btn btn-sm"
-                        style="height:30px; padding:0 12px; font-size:12px; font-weight:600;
-                               border-radius:6px; border:1px solid var(--accent);
-                               background:var(--accent); color:#fff;">1</button>
-                @for (int p = 2; p <= 3; p++) {
-                    <button class="btn btn-sm"
-                            style="height:30px; padding:0 12px; font-size:12px; font-weight:600;
-                                   border-radius:6px; border:1px solid var(--border);
-                                   background:var(--bg); color:var(--text-muted);">@p</button>
-                }
-                <button class="btn btn-sm"
-                        style="height:30px; padding:0 10px; font-size:12px;
-                               border-radius:6px; border:1px solid var(--border);
-                               background:var(--bg); color:var(--text-muted);">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
-        </div>
-    </div>
+    }
 </div>
 
-<!-- ═══ MODAL DE DETALLE ═══════════════════════════════════════ -->
-<div class="detail-modal-backdrop" id="detailBackdrop" onclick="closeModalOnBackdrop(event)">
-    <div class="detail-modal" id="detailModal">
+<!-- ═══ MODAL DETALLE DE PLAZA + APLICAR ═══ -->
+<div class="modal fade" id="modalPlaza" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:560px;">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-body p-0">
+                <!-- Header -->
+                <div id="modalPlazaHeader" style="padding:24px 24px 16px;border-bottom:1px solid var(--border);">
+                    <div class="d-flex align-items-center gap-3">
+                        <div id="modalEmpLogo" class="emp-mini-logo" style="width:48px;height:48px;border-radius:13px;font-size:16px;"></div>
+                        <div>
+                            <div id="modalPlazaTitulo" style="font-size:17px;font-weight:800;"></div>
+                            <div id="modalEmpNombre" style="font-size:13px;color:var(--navy);font-weight:600;"></div>
+                        </div>
+                        <button class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
 
-        <div class="modal-header-gmt">
-            <div class="modal-avatar" id="mAvatar"></div>
-            <div class="modal-title-block">
-                <div class="modal-title-gmt" id="mEmpresa"></div>
-                <div class="modal-sub" id="mRFC"></div>
+                <!-- Detalles -->
+                <div style="padding:20px 24px;">
+                    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <tr><td style="padding:8px 0;font-weight:700;color:var(--text-muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.5px;width:140px;">Modalidad</td><td id="modalModalidad" style="padding:8px 0;"></td></tr>
+                        <tr><td style="padding:8px 0;font-weight:700;color:var(--text-muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.5px;">Ciudad</td><td id="modalCiudad" style="padding:8px 0;"></td></tr>
+                        <tr><td style="padding:8px 0;font-weight:700;color:var(--text-muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.5px;">Área</td><td id="modalArea" style="padding:8px 0;"></td></tr>
+                        <tr><td style="padding:8px 0;font-weight:700;color:var(--text-muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.5px;">Sem. mínimo</td><td id="modalSemestre" style="padding:8px 0;"></td></tr>
+                        <tr><td style="padding:8px 0;font-weight:700;color:var(--text-muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.5px;">Cupos</td><td id="modalCupos" style="padding:8px 0;"></td></tr>
+                    </table>
+                    <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:14px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px;">Descripción</div>
+                        <div id="modalDescripcion" style="font-size:13.5px;color:var(--text-secondary);line-height:1.6;"></div>
+                    </div>
+
+                    <!-- Documentos que se adjuntarán -->
+                    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+                        <div class="modal-section-title">Documentos que se adjuntarán a tu solicitud</div>
+                        @if (docCv == null && docConstancia == null)
+                        {
+                            <div class="docs-alert">
+                                <i class="fas fa-triangle-exclamation mt-1" style="flex-shrink:0;"></i>
+                                <div>No tienes documentos subidos. Ve a tu <a href="/Dashboard/PerfilAcademico" style="color:#92400e;font-weight:700;">Perfil Académico</a> para subir tu CV y constancia de estudios antes de aplicar.</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column gap-2">
+                                @if (docCv != null)
+                                {
+                                    <div class="doc-preview-item">
+                                        <i class="fas fa-file-pdf" style="color:#dc2626;font-size:18px;"></i>
+                                        <div class="doc-name">@docCv.NombreArchivo</div>
+                                        <span class="badge-tipo" style="background:rgba(0,35,102,.08);color:var(--navy);">CV</span>
+                                        <a href="@docCv.Url" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none;"><i class="fas fa-eye"></i></a>
+                                    </div>
+                                }
+                                @if (docConstancia != null)
+                                {
+                                    <div class="doc-preview-item">
+                                        <i class="fas fa-file-pdf" style="color:#dc2626;font-size:18px;"></i>
+                                        <div class="doc-name">@docConstancia.NombreArchivo</div>
+                                        <span class="badge-tipo" style="background:rgba(13,148,136,.1);color:#0d9488;">Constancia</span>
+                                        <a href="@docConstancia.Url" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none;"><i class="fas fa-eye"></i></a>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Footer con botón aplicar -->
+                <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;">
+                    <button class="btn btn-light fw-600" data-bs-dismiss="modal" style="border-radius:9px;">Cerrar</button>
+                    <form id="formAplicar" asp-action="AplicarSolicitud" asp-controller="Dashboard" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="plazaId" id="modalPlazaId" />
+                        <button type="submit" id="btnAplicar" class="btn fw-600"
+                                style="background:var(--navy);color:#fff;border-radius:9px;padding:9px 22px;">
+                            <i class="fas fa-paper-plane me-1"></i> Aplicar ahora
+                        </button>
+                    </form>
+                </div>
             </div>
-            <button class="modal-close-btn" onclick="closeModal()">
-                <i class="fas fa-xmark"></i>
-            </button>
         </div>
-
-        <div class="modal-body-gmt">
-            <div class="modal-row">
-                <span class="modal-row-label">Tipo</span>
-                <span class="modal-row-value" id="mTipo"></span>
-            </div>
-            <div class="modal-row">
-                <span class="modal-row-label">Estado</span>
-                <span class="modal-row-value" id="mEstado"></span>
-            </div>
-            <div class="modal-row">
-                <span class="modal-row-label">Ciudad</span>
-                <span class="modal-row-value" id="mCiudad"></span>
-            </div>
-            <div class="modal-row">
-                <span class="modal-row-label">Duración</span>
-                <span class="modal-row-value" id="mDuracion"></span>
-            </div>
-            <div class="modal-row">
-                <span class="modal-row-label">Compensación</span>
-                <span class="modal-row-value" id="mCompensacion"></span>
-            </div>
-            <div class="modal-row">
-                <span class="modal-row-label">Actividad</span>
-                <span class="modal-row-value" id="mTarea"></span>
-            </div>
-            <div class="modal-row">
-                <span class="modal-row-label">Requisitos</span>
-                <span class="modal-row-value" id="mRequisitos"></span>
-            </div>
-            <div class="modal-row">
-                <span class="modal-row-label">Aplicantes</span>
-                <span class="modal-row-value" id="mAplicantes"></span>
-            </div>
-        </div>
-
-        <div class="modal-footer-gmt">
-            <button class="btn-modal-secondary" onclick="closeModal()">Cerrar</button>
-            <button class="btn-modal-primary" id="mBtnAplicar">
-                <i class="fas fa-paper-plane me-2"></i>Aplicar ahora
-            </button>
-        </div>
-
     </div>
 </div>
 
 @section Scripts {
 <script>
-    // ── Dataset de peticiones (espejo del C# para el modal) ────
-    const PETICIONES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(peticiones.Select(p => new {
-        id           = p.Id,
-        initials     = p.Initials,
-        color        = p.Color,
-        empresa      = p.Empresa,
-        rfc          = p.RFC,
-        ciudad       = p.Ciudad,
-        tipo         = p.Tipo,
-        tipoClass    = p.TipoClass,
-        estado       = p.Estado,
-        estadoClass  = p.EstadoClass,
-        aplicantes   = p.Aplicantes,
-        maxAplicantes= p.MaxAplicantes,
-        tarea        = p.Tarea,
-        duracion     = p.Duracion,
-        compensacion = p.Compensacion,
-        requisitos   = p.Requisitos
-    })));
+    // ── Datos de plazas (para el modal de detalle) ────────────────────────
+    const PLAZAS = {
+        @foreach (var p in plazasDisponibles)
+        {
+            var yaAplicó = solicitudes.Any(s => s.PlazaId == p.Id);
+            <text>
+            @p.Id: {
+                titulo:      "@Html.Raw(p.Titulo.Replace("\"","\\\""))",
+                empresa:     "@Html.Raw((p.Empresa?.NombreEmpresa ?? "").Replace("\"","\\\""))",
+                ciudad:      "@Html.Raw((p.Empresa?.Ciudad ?? "—").Replace("\"","\\\""))",
+                modalidad:   "@(p.Modalidad[0].ToString().ToUpper() + p.Modalidad[1..])",
+                area:        "@Html.Raw((p.Area ?? "—").Replace("\"","\\\""))",
+                semestre:    "@(p.SemestreMinimo.HasValue ? p.SemestreMinimo + "° semestre" : "Sin requisito")",
+                cupos:       "@(p.CuposDisponibles - p.CuposOcupados) de @p.CuposDisponibles disponibles",
+                descripcion: "@Html.Raw(p.Descripcion.Replace("\"","\\\"").Replace("\n","\\n"))",
+                yaAplico:    @(yaAplicó ? "true" : "false"),
+                color:       "@(new[]{"#002366","#7c3aed","#0d9488","#d97706","#dc2626"}[Math.Abs((p.Empresa?.NombreEmpresa??"").GetHashCode())%5])",
+                initials:    "@string.Join("",((p.Empresa?.NombreEmpresa??"??").Split(' ').Take(2).Select(s=>s.Length>0?s[0].ToString():"")))"
+            },
+            </text>
+        }
+    };
 
-    // ── Filtros ───────────────────────────────────────────────
-    const rows       = document.querySelectorAll('#tableBody tr');
-    const emptyState = document.getElementById('emptyState');
-    const visCount   = document.getElementById('visibleCount');
-
-    function applyFilters() {
-        const tipo    = document.getElementById('filterTipo').value.toLowerCase();
-        const estado  = document.getElementById('filterEstado').value.toLowerCase();
-        const search  = document.getElementById('searchInput').value.toLowerCase().trim();
-
-        let visible = 0;
-
-        rows.forEach(row => {
-            const rTipo   = (row.dataset.tipo   || '').toLowerCase();
-            const rEstado = (row.dataset.estado || '').toLowerCase();
-            const rSearch = (row.dataset.search || '').toLowerCase();
-
-            const ok = (!tipo   || rTipo.includes(tipo))
-                    && (!estado || rEstado.includes(estado))
-                    && (!search || rSearch.includes(search));
-
-            row.style.display = ok ? '' : 'none';
-            if (ok) visible++;
-        });
-
-        visCount.textContent = visible;
-        emptyState.style.display = visible === 0 ? 'block' : 'none';
-    }
-
-    document.getElementById('filterTipo').addEventListener('change', applyFilters);
-    document.getElementById('filterEstado').addEventListener('change', applyFilters);
-    document.getElementById('searchInput').addEventListener('input', applyFilters);
-
-    // ── Filtro por chip ───────────────────────────────────────
-    document.querySelectorAll('.chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            const filter = chip.dataset.filter;
-            const sel    = document.getElementById('filterEstado');
-            sel.value    = filter === 'all' ? '' : filter;
-            applyFilters();
-        });
-    });
-
-    // ── Modal ─────────────────────────────────────────────────
-    function openModal(id) {
-        const p = PETICIONES.find(x => x.id === id);
+    function abrirDetalle(plazaId) {
+        const p = PLAZAS[plazaId];
         if (!p) return;
 
-        document.getElementById('mAvatar').style.background = p.color;
-        document.getElementById('mAvatar').textContent       = p.initials;
-        document.getElementById('mEmpresa').textContent      = p.empresa;
-        document.getElementById('mRFC').textContent          = `RFC: ${p.rfc}`;
-        document.getElementById('mCiudad').textContent       = p.ciudad;
-        document.getElementById('mDuracion').textContent     = p.duracion;
-        document.getElementById('mCompensacion').textContent = p.compensacion;
-        document.getElementById('mTarea').textContent        = p.tarea;
-        document.getElementById('mRequisitos').textContent   = p.requisitos;
-        document.getElementById('mAplicantes').textContent   =
-            `${p.aplicantes} / ${p.maxAplicantes} lugares`;
+        document.getElementById('modalPlazaTitulo').textContent = p.titulo;
+        document.getElementById('modalEmpNombre').textContent   = p.empresa;
+        document.getElementById('modalModalidad').textContent   = p.modalidad;
+        document.getElementById('modalCiudad').textContent      = p.ciudad;
+        document.getElementById('modalArea').textContent        = p.area;
+        document.getElementById('modalSemestre').textContent    = p.semestre;
+        document.getElementById('modalCupos').textContent       = p.cupos;
+        document.getElementById('modalDescripcion').textContent = p.descripcion;
+        document.getElementById('modalPlazaId').value           = plazaId;
 
-        // Tipo
-        document.getElementById('mTipo').innerHTML =
-            `<span class="type-pill ${p.tipoClass}" style="display:inline-flex;">${p.tipo}</span>`;
+        const logo = document.getElementById('modalEmpLogo');
+        logo.textContent = p.initials;
+        logo.style.background = p.color;
 
-        // Estado
-        document.getElementById('mEstado').innerHTML =
-            `<span class="status-pill ${p.estadoClass}" style="display:inline-flex;">${p.estado}</span>`;
-
-        // Deshabilitar botón si cerrada
-        const btn = document.getElementById('mBtnAplicar');
-        if (p.estado === 'Cerrada') {
+        const btn = document.getElementById('btnAplicar');
+        if (p.yaAplico) {
             btn.disabled = true;
-            btn.style.opacity = '.5';
-            btn.style.cursor  = 'not-allowed';
+            btn.textContent = '✓ Ya aplicaste';
         } else {
             btn.disabled = false;
-            btn.style.opacity = '1';
-            btn.style.cursor  = 'pointer';
+            btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Aplicar ahora';
         }
 
-        document.getElementById('detailBackdrop').classList.add('open');
-        document.body.style.overflow = 'hidden';
+        new bootstrap.Modal(document.getElementById('modalPlaza')).show();
     }
 
-    function closeModal() {
-        document.getElementById('detailBackdrop').classList.remove('open');
-        document.body.style.overflow = '';
-    }
-
-    function closeModalOnBackdrop(e) {
-        if (e.target === document.getElementById('detailBackdrop')) closeModal();
-    }
-
-    // Tecla Escape cierra el modal
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closeModal();
+    // ── Tabs ──────────────────────────────────────────────────────────────
+    document.querySelectorAll('.tab-item').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            const target = this.dataset.tab;
+            document.getElementById('tab-convocatorias').style.display    = target === 'convocatorias'    ? '' : 'none';
+            document.getElementById('tab-mis-solicitudes').style.display  = target === 'mis-solicitudes'  ? '' : 'none';
+        });
     });
 </script>
 }

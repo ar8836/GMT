@@ -16,7 +16,10 @@ namespace GMT.Controllers
         private readonly EmailService _emailService;
         private readonly ILogger<AccountController> _logger;
 
-        public AccountController(ApplicationDbContext context, EmailService emailService, ILogger<AccountController> logger)
+        public AccountController(
+            ApplicationDbContext context,
+            EmailService emailService,
+            ILogger<AccountController> logger)
         {
             _context = context;
             _emailService = emailService;
@@ -26,7 +29,9 @@ namespace GMT.Controllers
         [HttpGet]
         public IActionResult Index() => View();
 
-        // ── LOGIN ─────────────────────────────────────────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        //  POST /Account/Login
+        // ══════════════════════════════════════════════════════════════════════
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(string Email, string Password, string TipoRegistro)
@@ -51,9 +56,29 @@ namespace GMT.Controllers
                     return View("Index");
                 }
 
-                // Usar el rol guardado en DB como fuente de verdad
                 var rolReal = loginUsuario.Rol; // 'alumno' | 'empresa' | 'admin'
 
+                // ── Verificar lista negra (solo empresas) ─────────────────────
+                if (rolReal == "empresa")
+                {
+                    var empresa = await _context.Empresas
+                        .FirstOrDefaultAsync(e => e.LoginId == loginUsuario.Id);
+
+                    if (empresa != null)
+                    {
+                        var enListaNegra = await _context.ListaNegraEmpresas
+                            .AnyAsync(l => l.EmpresaId == empresa.Id && l.Activo);
+
+                        if (enListaNegra)
+                        {
+                            _logger.LogWarning("Intento de acceso bloqueado — empresa en lista negra. LoginId={Id}", loginUsuario.Id);
+                            ModelState.AddModelError("", "Tu cuenta ha sido suspendida. Contacta a Vinculación en vinculacion@gmtek.lol para más información.");
+                            return View("Index");
+                        }
+                    }
+                }
+
+                // ── Crear sesión ──────────────────────────────────────────────
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, Email),
@@ -61,16 +86,26 @@ namespace GMT.Controllers
                     new Claim("UserType", TipoRegistro)
                 };
 
-                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var claimsIdentity = new ClaimsIdentity(
+                    claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
                 await HttpContext.SignInAsync(
                     CookieAuthenticationDefaults.AuthenticationScheme,
                     new ClaimsPrincipal(claimsIdentity));
 
+                // Actualizar último acceso
+                loginUsuario.UltimoAcceso = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
                 _logger.LogInformation("Usuario {Email} inició sesión ({Rol})", Email, rolReal);
 
-                return rolReal == "empresa"
-                    ? RedirectToAction("Empresa", "Dashboard")
-                    : RedirectToAction("Alumno", "Dashboard");
+                // ── Redirección según rol ─────────────────────────────────────
+                return rolReal switch
+                {
+                    "admin" => RedirectToAction("Index", "Admin"),
+                    "empresa" => RedirectToAction("Empresa", "Dashboard"),
+                    _ => RedirectToAction("Alumno", "Dashboard")
+                };
             }
             catch (Exception ex)
             {
@@ -93,7 +128,9 @@ namespace GMT.Controllers
         [HttpGet]
         public IActionResult RegistrationSuccess() => View();
 
-        // ── REGISTRO ──────────────────────────────────────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        //  POST /Account/Register
+        // ══════════════════════════════════════════════════════════════════════
         [HttpPost("Account/Register")]
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Register(
@@ -108,21 +145,28 @@ namespace GMT.Controllers
         {
             try
             {
+                // Verificar que el correo no exista ya
+                var yaRegistrado = await _context.Logins
+                    .AnyAsync(l => l.CorreoInstitucional == Email);
+
+                if (yaRegistrado)
+                {
+                    ModelState.AddModelError("", "Este correo ya está registrado. Intenta iniciar sesión.");
+                    return View("Index");
+                }
+
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(Password);
 
-                // Serializar TODOS los datos que VerificationService necesita al confirmar
                 var datosRegistro = new
                 {
                     CorreoElectronico = Email,
                     PasswordHash = passwordHash,
                     TipoRegistro,
-                    // Alumno
                     NombreCompleto,
                     Matricula,
                     Carrera,
                     Semestre,
                     Telefono,
-                    // Empresa
                     NombreEmpresa,
                     RazonSocial,
                     RFC,
@@ -146,8 +190,10 @@ namespace GMT.Controllers
                 _context.RegistrosPendientes.Add(registroPendiente);
                 await _context.SaveChangesAsync();
 
-                string verificationLink = Url.Action("Verify", "Verification",
-                    new { token = registroPendiente.Id.ToString() }, Request.Scheme) ?? "";
+                string verificationLink = Url.Action(
+                    "Verify", "Verification",
+                    new { token = registroPendiente.Id.ToString() },
+                    Request.Scheme) ?? "";
 
                 await _emailService.SendVerificationEmailAsync(Email, verificationLink);
 

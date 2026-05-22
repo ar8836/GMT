@@ -1,422 +1,137 @@
-﻿@{
+﻿@using GMT.Models
+@{
     Layout = "~/Views/Shared/_Layout.cshtml";
-    ViewData["Title"] = "Perfil Académico";
+    ViewData["Title"]        = "Perfil Académico";
     ViewData["ActiveModule"] = "perfil";
-    ViewData["UserName"] = "Ariel Rubio Morales";
-    ViewData["UserRole"] = "Alumno - ISC";
-}
 
-@* ══════════════════════════════════════════════════════════
-   PERFILACADEMICO.CSHTML — Perfil del Alumno
-   GMT | Gestor Modular Tecnológico
-   ══════════════════════════════════════════════════════════ *@
+    var alumno    = ViewBag.Alumno    as Alumno;
+    var documentos = ViewBag.Documentos as List<DocumentoAlumno> ?? new();
+
+    if (alumno != null)
+    {
+        ViewData["UserName"] = alumno.NombreCompleto ?? alumno.Login?.CorreoInstitucional ?? "Alumno";
+        ViewData["UserRole"] = $"Alumno · {alumno.Carrera ?? "—"}";
+    }
+
+    string initials  = string.Join("", (alumno?.NombreCompleto ?? "AL").Split(' ').Take(2).Select(s => s.Length > 0 ? s[0].ToString().ToUpper() : ""));
+    int    alumnoId  = alumno?.Id ?? 0;
+
+    var docCv          = documentos.FirstOrDefault(d => d.TipoDocumento == "cv");
+    var docConstancia  = documentos.FirstOrDefault(d => d.TipoDocumento == "constancia_estudios");
+}
 
 @section Styles {
 <style>
     /* ─── Profile Hero ────────────────────────────────── */
     .profile-hero {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow-sm);
-        padding: 32px;
-        display: flex;
-        align-items: center;
-        gap: 28px;
-        position: relative;
-        overflow: hidden;
+        background: var(--bg-card); border-radius: var(--radius);
+        border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+        padding: 32px; display: flex; align-items: center;
+        gap: 28px; position: relative; overflow: hidden;
     }
-
-    /* Franja decorativa superior */
     .profile-hero::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, var(--navy), var(--accent));
+        content: ''; position: absolute; top: 0; left: 0; right: 0;
+        height: 4px; background: linear-gradient(90deg, var(--navy), var(--accent));
     }
 
-    .profile-avatar-wrap {
-        position: relative;
-        flex-shrink: 0;
-    }
-
+    .profile-avatar-wrap { position: relative; flex-shrink: 0; }
     .profile-avatar-lg {
-        width: 100px; height: 100px;
-        border-radius: 50%;
+        width: 100px; height: 100px; border-radius: 50%;
         background: linear-gradient(135deg, var(--navy), var(--accent));
         display: flex; align-items: center; justify-content: center;
-        font-size: 36px;
-        font-weight: 800;
-        color: #fff;
-        letter-spacing: 1px;
-        box-shadow: 0 6px 24px rgba(0,35,102,.2);
-        overflow: hidden;
-        cursor: pointer;
-        border: 3px solid #fff;
-        outline: 3px solid var(--accent);
-        transition: var(--transition);
+        font-size: 36px; font-weight: 800; color: #fff;
+        box-shadow: 0 6px 24px rgba(0,35,102,.2); overflow: hidden;
+        cursor: pointer; border: 3px solid #fff;
+        outline: 3px solid var(--accent); transition: var(--transition);
     }
-
-    .profile-avatar-lg img {
-        width: 100%; height: 100%;
-        object-fit: cover;
-    }
-
+    .profile-avatar-lg img { width: 100%; height: 100%; object-fit: cover; }
     .profile-avatar-lg:hover { opacity: .85; }
 
-    /* Botón cámara sobre avatar */
     .avatar-edit-btn {
-        position: absolute;
-        bottom: 2px; right: 2px;
-        width: 28px; height: 28px;
-        background: var(--accent);
-        border-radius: 50%;
-        border: 2px solid #fff;
+        position: absolute; bottom: 2px; right: 2px;
+        width: 28px; height: 28px; background: var(--accent);
+        border-radius: 50%; border: 2px solid #fff;
         display: flex; align-items: center; justify-content: center;
-        font-size: 11px;
-        color: #fff;
-        cursor: pointer;
-        transition: var(--transition);
+        font-size: 11px; color: #fff; cursor: pointer; transition: var(--transition);
     }
-
     .avatar-edit-btn:hover { background: var(--navy); }
 
-    .profile-info-main { flex: 1; min-width: 0; }
-
-    .profile-name-lg {
-        font-size: 22px;
-        font-weight: 800;
-        color: var(--text-primary);
-        letter-spacing: -.3px;
-        margin-bottom: 4px;
-    }
-
-    .profile-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        margin-top: 10px;
-    }
-
-    .meta-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12.5px;
-        color: var(--text-muted);
-    }
-
-    .meta-item i {
-        color: var(--accent);
-        font-size: 12px;
-        width: 14px;
-        text-align: center;
-    }
-
-    /* Status badge en el hero */
+    .profile-name-lg { font-size: 22px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+    .profile-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; }
+    .meta-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); }
+    .meta-item i { color: var(--accent); font-size: 12px; width: 14px; text-align: center; }
     .hero-badge {
-        padding: 5px 14px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 700;
-        background: #dcfce7;
-        color: #16a34a;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        margin-top: 10px;
+        padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+        background: #dcfce7; color: #16a34a; display: inline-flex;
+        align-items: center; gap: 5px; margin-top: 10px;
     }
+    .hero-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
 
-    .hero-badge::before {
-        content: '';
-        width: 6px; height: 6px;
-        border-radius: 50%;
-        background: #22c55e;
-    }
-
-    /* ─── Info Cards Grid ─────────────────────────────── */
-    .info-card {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-        transition: var(--transition);
-    }
-
+    /* ─── Info Cards ──────────────────────────────────── */
+    .info-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden; transition: var(--transition); }
     .info-card:hover { box-shadow: var(--shadow-md); }
-
-    .info-card-header {
-        padding: 16px 22px;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: var(--bg);
-    }
-
-    .info-card-header-icon {
-        width: 32px; height: 32px;
-        border-radius: 8px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 13px;
-        background: rgba(0,35,102,.08);
-        color: var(--navy);
-    }
-
-    .info-card-title {
-        font-size: 13.5px;
-        font-weight: 700;
-        color: var(--text-primary);
-    }
-
+    .info-card-header { padding: 16px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--bg); }
+    .info-card-header-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; background: rgba(0,35,102,.08); color: var(--navy); }
+    .info-card-title { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
     .info-card-body { padding: 20px 22px; }
-
-    /* Filas de datos */
-    .data-row {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 10px 0;
-        border-bottom: 1px solid var(--border);
-    }
-
+    .data-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .data-row:last-child { border-bottom: none; padding-bottom: 0; }
     .data-row:first-child { padding-top: 0; }
+    .data-label { font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; min-width: 130px; flex-shrink: 0; margin-top: 2px; }
+    .data-value { font-size: 13.5px; color: var(--text-primary); font-weight: 500; flex: 1; }
 
-    .data-label {
-        font-size: 11.5px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: .4px;
-        min-width: 140px;
-        flex-shrink: 0;
-        padding-top: 1px;
-    }
-
-    .data-value {
-        font-size: 13.5px;
-        font-weight: 500;
-        color: var(--text-primary);
-        flex: 1;
-    }
-
-    /* ─── Progress Bar (créditos) ─────────────────────── */
-    .credits-wrap {
-        margin-top: 4px;
-    }
-
-    .credits-bar-bg {
-        height: 8px;
-        background: var(--bg);
-        border-radius: 20px;
-        overflow: hidden;
-        margin-top: 6px;
-        border: 1px solid var(--border);
-    }
-
-    .credits-bar-fill {
-        height: 100%;
-        border-radius: 20px;
-        background: linear-gradient(90deg, var(--navy), var(--accent));
-        transition: width 1.2s cubic-bezier(.4,0,.2,1);
-    }
-
-    .credits-label {
-        display: flex;
-        justify-content: space-between;
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 4px;
-    }
-
-    /* ─── Documentos / Upload ─────────────────────────── */
-    .doc-card {
-        background: var(--bg-card);
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-    }
-
-    /* Zona de arrastre */
+    /* ─── Documentos ──────────────────────────────────── */
     .drop-zone {
-        border: 2px dashed var(--border);
-        border-radius: var(--radius-sm);
-        padding: 28px 20px;
-        text-align: center;
-        cursor: pointer;
-        transition: var(--transition);
-        background: var(--bg);
-        position: relative;
+        border: 2px dashed var(--border); border-radius: var(--radius);
+        padding: 36px 24px; text-align: center; cursor: pointer;
+        transition: var(--transition); background: var(--bg);
     }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: rgba(74,144,217,.05); }
+    .drop-zone i { font-size: 2.2rem; color: var(--accent); opacity: .5; display: block; margin-bottom: 10px; }
 
-    .drop-zone.drag-over {
-        border-color: var(--accent);
-        background: rgba(74,144,217,.05);
-    }
-
-    .drop-zone:hover {
-        border-color: var(--accent);
-        background: rgba(74,144,217,.04);
-    }
-
-    .drop-zone input[type="file"] {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        cursor: pointer;
-        width: 100%;
-        height: 100%;
-    }
-
-    .drop-icon {
-        font-size: 28px;
-        color: var(--accent);
-        margin-bottom: 10px;
-        display: block;
-    }
-
-    .drop-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 4px;
-    }
-
-    .drop-sub {
-        font-size: 12px;
-        color: var(--text-muted);
-    }
-
-    /* Lista de documentos subidos */
-    .doc-list { padding: 0; margin: 0; list-style: none; }
-
+    .doc-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
     .doc-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 13px 22px;
-        border-bottom: 1px solid var(--border);
-        transition: background .15s;
-    }
-
-    .doc-item:last-child { border-bottom: none; }
-    .doc-item:hover { background: rgba(74,144,217,.03); }
-
-    .doc-icon {
-        width: 36px; height: 36px;
-        border-radius: 8px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 15px;
-        flex-shrink: 0;
-    }
-
-    .doc-icon.pdf   { background: rgba(239,68,68,.1);   color: #ef4444; }
-    .doc-icon.img   { background: rgba(74,144,217,.1);  color: var(--accent); }
-    .doc-icon.other { background: rgba(107,114,128,.1); color: #6b7280; }
-
-    .doc-meta { flex: 1; min-width: 0; }
-
-    .doc-name {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .doc-size {
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 1px;
-    }
-
-    .doc-status {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 3px 9px;
-        border-radius: 20px;
-        white-space: nowrap;
-    }
-
-    .doc-status.verified   { background: #dcfce7; color: #16a34a; }
-    .doc-status.pending    { background: #fef3c7; color: #92400e; }
-    .doc-status.uploading  { background: #dbeafe; color: #1e40af; }
-
-    .doc-action {
-        background: none;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        color: var(--text-muted);
-        font-size: 12px;
-        cursor: pointer;
-        padding: 4px 10px;
+        display: flex; align-items: center; gap: 14px;
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius-sm); padding: 14px 18px;
         transition: var(--transition);
     }
+    .doc-item:hover { box-shadow: var(--shadow-sm); }
+    .doc-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .doc-icon.pdf { background: rgba(220,38,38,.1); color: #dc2626; }
+    .doc-name  { font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+    .doc-size  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .doc-type-badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 2px 8px; border-radius: 4px; }
+    .doc-type-cv          { background: rgba(0,35,102,.08);  color: var(--navy); }
+    .doc-type-constancia  { background: rgba(13,148,136,.1); color: #0d9488; }
 
-    .doc-action:hover { border-color: var(--accent); color: var(--accent); }
+    .doc-status { padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+    .doc-status.verified  { background: #dcfce7; color: #16a34a; }
+    .doc-status.pending   { background: #fef3c7; color: #92400e; }
+    .doc-status.rejected  { background: #fee2e2; color: #991b1b; }
 
-    /* Barra de progreso de subida */
-    .upload-progress-wrap { padding: 16px 22px; display: none; }
+    .doc-action { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: none; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; transition: var(--transition); text-decoration: none; }
+    .doc-action:hover { background: var(--bg); color: var(--navy); }
 
+    /* ─── Upload progress ─────────────────────────────── */
+    .upload-progress-wrap { display: none; background: var(--bg); border-radius: var(--radius-sm); padding: 12px 16px; margin-top: 10px; }
     .upload-progress-wrap.active { display: block; }
+    .progress-bar-bg { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; width: 0%; transition: width .2s; }
+    .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 6px; }
 
-    .upload-prog-bar {
-        height: 6px;
-        background: var(--bg);
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid var(--border);
-        margin-top: 8px;
-    }
-
-    .upload-prog-fill {
-        height: 100%;
-        width: 0%;
-        border-radius: 10px;
-        background: linear-gradient(90deg, var(--navy), var(--accent));
-        transition: width .3s ease;
-    }
-
-    .upload-prog-label {
-        display: flex;
-        justify-content: space-between;
-        font-size: 11.5px;
-        color: var(--text-muted);
-        margin-bottom: 4px;
-    }
-
-    /* ─── Toast de notificación ───────────────────────── */
-    .gmt-toast {
-        position: fixed;
-        bottom: 28px; right: 28px;
-        z-index: 9999;
-        background: var(--navy-dark, #001540);
-        color: #fff;
-        padding: 14px 20px;
-        border-radius: 10px;
-        font-size: 13.5px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        box-shadow: 0 8px 32px rgba(0,0,0,.25);
-        transform: translateY(80px);
-        opacity: 0;
-        transition: all .35s cubic-bezier(.4,0,.2,1);
-        max-width: 340px;
-    }
-
+    /* ─── Toast ───────────────────────────────────────── */
+    .gmt-toast { position: fixed; bottom: 28px; right: 28px; z-index: 9999; background: var(--navy-dark, #001540); color: #fff; padding: 14px 20px; border-radius: 10px; font-size: 13.5px; font-weight: 500; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 32px rgba(0,0,0,.25); transform: translateY(80px); opacity: 0; transition: all .35s cubic-bezier(.4,0,.2,1); max-width: 340px; }
     .gmt-toast.show { transform: translateY(0); opacity: 1; }
-    .gmt-toast.toast-ok   i { color: #4ade80; }
-    .gmt-toast.toast-err  i { color: #f87171; }
-    .gmt-toast.toast-info i { color: var(--accent-bright, #5ba3f5); }
+    .gmt-toast.toast-ok  i { color: #4ade80; }
+    .gmt-toast.toast-err i { color: #f87171; }
 
-    /* ─── Responsive ──────────────────────────────────── */
+    /* ─── Modal tipo documento ────────────────────────── */
+    .tipo-btn { border: 2px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: var(--transition); background: var(--bg); text-align: center; }
+    .tipo-btn:hover { border-color: var(--accent); background: rgba(74,144,217,.06); }
+    .tipo-btn.selected { border-color: var(--accent); background: rgba(74,144,217,.1); }
+    .tipo-btn i { font-size: 1.6rem; display: block; margin-bottom: 6px; }
+
     @@media (max-width: 767.98px) {
         .profile-hero { flex-direction: column; align-items: flex-start; gap: 16px; }
         .data-label { min-width: 110px; }
@@ -424,238 +139,194 @@
 </style>
 }
 
-@* ── Datos estáticos de demo ── *@
-@{
-    var alumno = new {
-        Nombre          = "Ariel Rubio Morales",
-        Initials        = "AR",
-        NumControl      = "22321145",
-        Carrera         = "Ingeniería en Sistemas Computacionales",
-        Especialidad    = "ISC",
-        Semestre        = "8°",
-        Email           = "22321145@acapulco.tecnm.mx",
-        Telefono        = "+52 744 123 4567",
-        CURP            = "RUMA001204HGRBRL09",
-        FotoUrl         = (string?)null,          // null → muestra iniciales
-        CredObtenidos   = 289,
-        CredTotales     = 340,
-        Promedio        = "9.1",
-        Estado          = "Activo"
-    };
-
-    int pct = (int)Math.Round((double)alumno.CredObtenidos / alumno.CredTotales * 100);
-
-    var documentos = new[] {
-        new { Nombre="Carta de presentación.pdf",     Tam="312 KB", Status="Verificado",  StatusClass="verified",  Icono="pdf" },
-        new { Nombre="Kardex oficial.pdf",            Tam="540 KB", Status="Verificado",  StatusClass="verified",  Icono="pdf" },
-        new { Nombre="Seguro social (IMSS).pdf",      Tam="198 KB", Status="Pendiente",   StatusClass="pending",   Icono="pdf" },
-        new { Nombre="Constancia de estudios.pdf",    Tam="225 KB", Status="Pendiente",   StatusClass="pending",   Icono="pdf" },
-    };
-
-    // ID del alumno actual (vendrá del claim de sesión en producción)
-    int alumnoId = 1;
-}
-
-<!-- ═══ CONTENT ══════════════════════════════════════════════ -->
-
 <!-- Page Header -->
-<div class="page-header fade-up">
-    <div class="breadcrumb-gmt">
-        <i class="fas fa-home"></i>
-        <a href="#">Inicio</a>
-        <i class="fas fa-chevron-right" style="font-size:9px;"></i>
-        <span>Perfil Académico</span>
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 style="font-size:22px;font-weight:800;margin:0;">Perfil Académico</h4>
+        <p style="color:var(--text-muted);font-size:13px;margin:0;">Consulta y administra tu información</p>
     </div>
-    <h1 class="page-title">Perfil Académico</h1>
-    <p class="page-subtitle">Consulta y administra tu información académica y documentos</p>
 </div>
 
-<!-- ── Hero del perfil ───────────────────────────────────────── -->
-<div class="profile-hero mb-4 fade-up stagger-1">
-
-    <!-- Avatar con botón de edición -->
+<!-- ── Hero ──────────────────────────────────────────────────────────── -->
+<div class="profile-hero mb-4">
     <div class="profile-avatar-wrap">
         <div class="profile-avatar-lg" id="avatarDisplay"
              onclick="document.getElementById('inputFoto').click()"
              title="Cambiar foto de perfil">
-            @if (!string.IsNullOrEmpty(alumno.FotoUrl)) {
-                <img src="@alumno.FotoUrl" alt="Foto de perfil" id="avatarImg" />
-            } else {
-                <span id="avatarInitials">@alumno.Initials</span>
+            @if (!string.IsNullOrEmpty(alumno?.FotoPerfilUrl))
+            {
+                <img src="@alumno!.FotoPerfilUrl" alt="Foto de perfil" id="avatarImg" />
+            }
+            else
+            {
+                <span id="avatarInitials">@initials</span>
             }
         </div>
         <div class="avatar-edit-btn" onclick="document.getElementById('inputFoto').click()">
             <i class="fas fa-camera"></i>
         </div>
-        <!-- Input oculto para foto (usa el endpoint PUT /api/Upload/{id}/photo) -->
-        <input type="file" id="inputFoto" accept=".jpg,.jpeg,.png" style="display:none" />
+        <input type="file" id="inputFoto" accept=".jpg,.jpeg,.png,.webp" style="display:none" />
     </div>
 
-    <!-- Datos principales -->
-    <div class="profile-info-main">
-        <div class="profile-name-lg">@alumno.Nombre</div>
-        <div style="font-size:13px; color:var(--text-muted); margin-top:2px;">
-            @alumno.Carrera
+    <div style="flex:1;min-width:0;">
+        <div class="profile-name-lg">@(alumno?.NombreCompleto ?? "—")</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">
+            @(alumno?.Carrera ?? "—")
         </div>
-
         <div class="profile-meta">
-            <div class="meta-item">
-                <i class="fas fa-id-card"></i>
-                <span>N° Control: <strong>@alumno.NumControl</strong></span>
-            </div>
-            <div class="meta-item">
-                <i class="fas fa-layer-group"></i>
-                <span>Semestre: <strong>@alumno.Semestre</strong></span>
-            </div>
-            <div class="meta-item">
-                <i class="fas fa-star"></i>
-                <span>Promedio: <strong>@alumno.Promedio</strong></span>
-            </div>
-            <div class="meta-item">
-                <i class="fas fa-envelope"></i>
-                <span>@alumno.Email</span>
-            </div>
+            <div class="meta-item"><i class="fas fa-id-card"></i><span>N° Control: <strong>@(alumno?.NumeroControl ?? "—")</strong></span></div>
+            <div class="meta-item"><i class="fas fa-layer-group"></i><span>Semestre: <strong>@(alumno?.Semestre?.ToString() ?? "—")°</strong></span></div>
+            @if (!string.IsNullOrEmpty(alumno?.Telefono))
+            {
+                <div class="meta-item"><i class="fas fa-phone"></i><span>@alumno!.Telefono</span></div>
+            }
+            @if (!string.IsNullOrEmpty(alumno?.Login?.CorreoInstitucional))
+            {
+                <div class="meta-item"><i class="fas fa-envelope"></i><span>@alumno!.Login!.CorreoInstitucional</span></div>
+            }
         </div>
-
-        <div class="hero-badge">@alumno.Estado</div>
+        <div class="hero-badge">Activo</div>
     </div>
 </div>
 
-<!-- ── Grid: datos personales + académicos ───────────────────── -->
+<!-- ── Grid datos personales + académicos ────────────────────────────── -->
 <div class="row g-3 mb-4">
-
-    <!-- Datos personales -->
-    <div class="col-12 col-lg-6 fade-up stagger-2">
+    <div class="col-12 col-lg-6">
         <div class="info-card">
             <div class="info-card-header">
-                <div class="info-card-header-icon">
-                    <i class="fas fa-user"></i>
-                </div>
+                <div class="info-card-header-icon"><i class="fas fa-user"></i></div>
                 <span class="info-card-title">Datos Personales</span>
             </div>
             <div class="info-card-body">
                 <div class="data-row">
                     <span class="data-label">Nombre completo</span>
-                    <span class="data-value">@alumno.Nombre</span>
-                </div>
-                <div class="data-row">
-                    <span class="data-label">CURP</span>
-                    <span class="data-value" style="font-family:'Space Mono',monospace; font-size:12px;">
-                        @alumno.CURP
-                    </span>
+                    <span class="data-value">@(alumno?.NombreCompleto ?? "—")</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Teléfono</span>
-                    <span class="data-value">@alumno.Telefono</span>
+                    <span class="data-value">@(alumno?.Telefono ?? "—")</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Correo</span>
-                    <span class="data-value" style="color:var(--accent);">@alumno.Email</span>
+                    <span class="data-value" style="color:var(--accent);">@(alumno?.Login?.CorreoInstitucional ?? "—")</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Datos académicos -->
-    <div class="col-12 col-lg-6 fade-up stagger-3">
+    <div class="col-12 col-lg-6">
         <div class="info-card">
             <div class="info-card-header">
-                <div class="info-card-header-icon">
-                    <i class="fas fa-graduation-cap"></i>
-                </div>
+                <div class="info-card-header-icon"><i class="fas fa-graduation-cap"></i></div>
                 <span class="info-card-title">Datos Académicos</span>
             </div>
             <div class="info-card-body">
                 <div class="data-row">
                     <span class="data-label">N° de Control</span>
-                    <span class="data-value" style="font-family:'Space Mono',monospace;">
-                        @alumno.NumControl
-                    </span>
+                    <span class="data-value" style="font-family:monospace;">@(alumno?.NumeroControl ?? "—")</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Carrera</span>
-                    <span class="data-value">@alumno.Especialidad — @alumno.Carrera</span>
+                    <span class="data-value">@(alumno?.Carrera ?? "—")</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Semestre</span>
-                    <span class="data-value">@alumno.Semestre semestre</span>
-                </div>
-                <div class="data-row">
-                    <span class="data-label">Créditos</span>
-                    <div class="data-value">
-                        <div class="credits-wrap">
-                            <span style="font-size:13px; font-weight:700; color:var(--navy);">
-                                @alumno.CredObtenidos / @alumno.CredTotales
-                                <span style="font-size:11px; font-weight:500; color:var(--text-muted);">
-                                    (@pct%)
-                                </span>
-                            </span>
-                            <div class="credits-bar-bg">
-                                <div class="credits-bar-fill" id="credBar" style="width:0%"></div>
-                            </div>
-                            <div class="credits-label">
-                                <span>0 créditos</span>
-                                <span>@alumno.CredTotales créditos</span>
-                            </div>
-                        </div>
-                    </div>
+                    <span class="data-value">@(alumno?.Semestre?.ToString() ?? "—")° semestre</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ── Documentos requeridos ─────────────────────────────────── -->
-<div class="fade-up stagger-4">
-    <div class="section-header">
-        <span class="section-title">Documentos Requeridos</span>
-        <span style="font-size:12px; color:var(--text-muted);">
-            <i class="fas fa-info-circle me-1" style="color:var(--accent);"></i>
-            Solo se aceptan archivos PDF · Máximo 5 MB por archivo
+<!-- ── Documentos ─────────────────────────────────────────────────────── -->
+<div class="info-card">
+    <div class="info-card-header">
+        <div class="info-card-header-icon"><i class="fas fa-folder-open"></i></div>
+        <span class="info-card-title">Documentos Requeridos</span>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:auto;">
+            <i class="fas fa-circle-info me-1"></i>Solo CV y Constancia de Estudios · PDF · Máx. 5 MB
         </span>
     </div>
+    <div class="info-card-body">
 
-    <div class="doc-card">
-
-        <!-- Zona de drag & drop -->
-        <div style="padding:20px 22px; border-bottom:1px solid var(--border);">
-            <div class="drop-zone" id="dropZone">
-                <input type="file" id="inputPdf" accept=".pdf" multiple />
-                <i class="fas fa-file-arrow-up drop-icon"></i>
-                <div class="drop-title">Arrastra tus PDFs aquí</div>
-                <div class="drop-sub">
-                    o <span style="color:var(--accent); font-weight:600;">haz clic para seleccionar</span>
-                    · PDF · Máx. 5 MB
-                </div>
+        <!-- Zona de arrastre -->
+        <div class="drop-zone mb-4" id="dropZone">
+            <i class="fas fa-file-arrow-up"></i>
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Arrastra tus PDFs aquí</div>
+            <div style="font-size:13px;color:var(--text-muted);">
+                o <span style="color:var(--accent);cursor:pointer;font-weight:600;"
+                         onclick="document.getElementById('inputPdf').click()">haz clic para seleccionar</span>
+                · PDF · Máx. 5 MB
             </div>
+            <input type="file" id="inputPdf" accept=".pdf" style="display:none" multiple />
+        </div>
 
-            <!-- Barra de progreso (oculta hasta que inicia la subida) -->
-            <div class="upload-progress-wrap" id="uploadProgressWrap">
-                <div class="upload-prog-label">
-                    <span id="uploadFileName">Subiendo archivo…</span>
-                    <span id="uploadPct">0%</span>
-                </div>
-                <div class="upload-prog-bar">
-                    <div class="upload-prog-fill" id="uploadFill"></div>
-                </div>
+        <!-- Barra de progreso -->
+        <div class="upload-progress-wrap" id="uploadProgressWrap">
+            <div class="progress-info mb-1">
+                <span id="uploadFileName" style="font-weight:600;"></span>
+                <span id="uploadPct">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="uploadFill"></div>
             </div>
         </div>
 
-        <!-- Lista de documentos existentes -->
+        <!-- Lista de documentos con datos reales -->
         <ul class="doc-list" id="docList">
-            @foreach (var doc in documentos) {
-                <li class="doc-item">
-                    <div class="doc-icon @doc.Icono">
-                        <i class="fas fa-file-pdf"></i>
+            <!-- CV -->
+            @if (docCv != null)
+            {
+                var statusClass = docCv.Estado switch { "aprobado" => "verified", "rechazado" => "rejected", _ => "pending" };
+                var statusLabel = docCv.Estado switch { "aprobado" => "Verificado", "rechazado" => "Rechazado", _ => "Pendiente" };
+                var tamStr = docCv.TamañoBytes >= 1024*1024 ? $"{docCv.TamañoBytes/1024.0/1024:F1} MB" : $"{docCv.TamañoBytes/1024.0:F0} KB";
+                <li class="doc-item" id="doc-cv-row">
+                    <div class="doc-icon pdf"><i class="fas fa-file-pdf"></i></div>
+                    <div style="flex:1;min-width:0;">
+                        <div class="doc-name">@docCv.NombreArchivo</div>
+                        <div class="doc-size">@tamStr · <span class="doc-type-badge doc-type-cv">CV</span></div>
                     </div>
-                    <div class="doc-meta">
-                        <div class="doc-name">@doc.Nombre</div>
-                        <div class="doc-size">@doc.Tam</div>
+                    <span class="doc-status @statusClass">@statusLabel</span>
+                    <a class="doc-action" href="/Admin/VerDocumento/@docCv.Id" target="_blank" title="Ver"><i class="fas fa-eye"></i></a>
+                </li>
+            }
+            else
+            {
+                <li class="doc-item" id="doc-cv-row" style="border:2px dashed var(--border);background:var(--bg);">
+                    <div class="doc-icon pdf" style="opacity:.4;"><i class="fas fa-file-pdf"></i></div>
+                    <div style="flex:1;">
+                        <div class="doc-name" style="color:var(--text-muted);">CV / Currículum Vitae</div>
+                        <div class="doc-size">No subido aún</div>
                     </div>
-                    <span class="doc-status @doc.StatusClass">@doc.Status</span>
-                    <button class="doc-action" title="Descargar">
-                        <i class="fas fa-download"></i>
-                    </button>
+                    <span class="doc-status pending">Pendiente</span>
+                </li>
+            }
+
+            <!-- Constancia de estudios -->
+            @if (docConstancia != null)
+            {
+                var statusClass = docConstancia.Estado switch { "aprobado" => "verified", "rechazado" => "rejected", _ => "pending" };
+                var statusLabel = docConstancia.Estado switch { "aprobado" => "Verificado", "rechazado" => "Rechazado", _ => "Pendiente" };
+                var tamStr = docConstancia.TamañoBytes >= 1024*1024 ? $"{docConstancia.TamañoBytes/1024.0/1024:F1} MB" : $"{docConstancia.TamañoBytes/1024.0:F0} KB";
+                <li class="doc-item" id="doc-constancia-row">
+                    <div class="doc-icon pdf"><i class="fas fa-file-pdf"></i></div>
+                    <div style="flex:1;min-width:0;">
+                        <div class="doc-name">@docConstancia.NombreArchivo</div>
+                        <div class="doc-size">@tamStr · <span class="doc-type-badge doc-type-constancia">Constancia</span></div>
+                    </div>
+                    <span class="doc-status @statusClass">@statusLabel</span>
+                    <a class="doc-action" href="/Admin/VerDocumento/@docConstancia.Id" target="_blank" title="Ver"><i class="fas fa-eye"></i></a>
+                </li>
+            }
+            else
+            {
+                <li class="doc-item" id="doc-constancia-row" style="border:2px dashed var(--border);background:var(--bg);">
+                    <div class="doc-icon pdf" style="opacity:.4;"><i class="fas fa-file-pdf"></i></div>
+                    <div style="flex:1;">
+                        <div class="doc-name" style="color:var(--text-muted);">Constancia de Estudios</div>
+                        <div class="doc-size">No subida aún</div>
+                    </div>
+                    <span class="doc-status pending">Pendiente</span>
                 </li>
             }
         </ul>
@@ -663,43 +334,68 @@
     </div>
 </div>
 
-<!-- Toast de notificación -->
+<!-- Toast -->
 <div class="gmt-toast" id="gmtToast">
     <i class="fas fa-circle-check" id="toastIcon"></i>
     <span id="toastMsg">Operación completada</span>
 </div>
 
+<!-- ═══ MODAL — Tipo de documento ═══ -->
+<div class="modal fade" id="modalTipoDoc" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-700" style="font-size:16px;">¿Qué tipo de documento es?</h5>
+            </div>
+            <div class="modal-body px-4 pb-4">
+                <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;" id="modalDocNombre"></p>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="tipo-btn" id="btn-tipo-cv" onclick="seleccionarTipo('cv')">
+                            <i class="fas fa-id-card" style="color:var(--navy);"></i>
+                            <div style="font-size:13px;font-weight:700;margin-bottom:2px;">CV</div>
+                            <div style="font-size:11.5px;color:var(--text-muted);">Currículum Vitae</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="tipo-btn" id="btn-tipo-constancia" onclick="seleccionarTipo('constancia_estudios')">
+                            <i class="fas fa-file-lines" style="color:#0d9488;"></i>
+                            <div style="font-size:13px;font-weight:700;margin-bottom:2px;">Constancia</div>
+                            <div style="font-size:11.5px;color:var(--text-muted);">Constancia de estudios</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-light fw-600 flex-fill" style="border-radius:9px;" onclick="cancelarModalTipo()">Cancelar</button>
+                    <button class="btn fw-600 flex-fill" id="btnConfirmarTipo" disabled
+                            style="background:var(--navy);color:#fff;border-radius:9px;"
+                            onclick="confirmarTipoYSubir()">
+                        <i class="fas fa-upload me-1"></i> Subir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
-    // ── Constantes ────────────────────────────────────────────
-    const ALUMNO_ID   = @alumnoId;
-    const API_PHOTO   = `/api/Upload/${ALUMNO_ID}/photo`;
-    const API_PDF     = `/api/Upload/${ALUMNO_ID}/document`;
+    const ALUMNO_ID  = @alumnoId;
+    const API_PHOTO  = `/api/Upload/${ALUMNO_ID}/photo`;
+    const API_DOC    = `/api/Upload/${ALUMNO_ID}/document`;
 
-    // ── Animación créditos ────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-            document.getElementById('credBar').style.width = '@pct%';
-        }, 400);
-    });
-
-    // ── Toast helper ──────────────────────────────────────────
+    // ── Toast ─────────────────────────────────────────────────────────────
     function showToast(msg, tipo = 'ok') {
-        const t   = document.getElementById('gmtToast');
-        const ico = document.getElementById('toastIcon');
+        const t = document.getElementById('gmtToast');
         document.getElementById('toastMsg').textContent = msg;
+        document.getElementById('toastIcon').className =
+            tipo === 'ok' ? 'fas fa-circle-check' : 'fas fa-circle-xmark';
         t.className = `gmt-toast toast-${tipo}`;
-        ico.className = tipo === 'ok'   ? 'fas fa-circle-check'
-                      : tipo === 'err'  ? 'fas fa-circle-xmark'
-                      : 'fas fa-circle-info';
         t.classList.add('show');
         setTimeout(() => t.classList.remove('show'), 3500);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // SUBIDA DE FOTO DE PERFIL
-    // Llama al endpoint existente: PUT /api/Upload/{id}/photo
-    // ═══════════════════════════════════════════════════════════
+    // ── FOTO DE PERFIL ────────────────────────────────────────────────────
     document.getElementById('inputFoto').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -707,73 +403,92 @@
         // Vista previa inmediata
         const reader = new FileReader();
         reader.onload = ev => {
-            const disp = document.getElementById('avatarDisplay');
-            disp.innerHTML = `<img src="${ev.target.result}" alt="Foto" id="avatarImg" style="width:100%;height:100%;object-fit:cover;">`;
+            document.getElementById('avatarDisplay').innerHTML =
+                `<img src="${ev.target.result}" alt="Foto" style="width:100%;height:100%;object-fit:cover;">`;
         };
         reader.readAsDataURL(file);
 
-        // Enviar al servidor
         const fd = new FormData();
         fd.append('file', file);
-
         try {
             const res  = await fetch(API_PHOTO, { method: 'PUT', body: fd });
             const data = await res.json();
-            if (res.ok) {
-                showToast('Foto actualizada correctamente', 'ok');
-            } else {
-                showToast(data.error ?? 'Error al subir la foto', 'err');
-            }
+            showToast(res.ok ? 'Foto actualizada ✓' : (data.error ?? 'Error al subir foto'), res.ok ? 'ok' : 'err');
         } catch {
-            showToast('Error de conexión al subir la foto', 'err');
+            showToast('Error de conexión', 'err');
         }
     });
 
-    // ═══════════════════════════════════════════════════════════
-    // SUBIDA DE PDFs
-    // Llama a: POST /api/Upload/{id}/document
-    // ═══════════════════════════════════════════════════════════
-
-    // Drag & drop visual
+    // ── DRAG & DROP PDF ───────────────────────────────────────────────────
     const dropZone = document.getElementById('dropZone');
 
-    dropZone.addEventListener('dragover', e => {
-        e.preventDefault();
-        dropZone.classList.add('drag-over');
-    });
-
-    ['dragleave', 'dragend'].forEach(ev =>
-        dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-over'))
-    );
+    dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('dragend',   ()=> dropZone.classList.remove('drag-over'));
 
     dropZone.addEventListener('drop', e => {
         e.preventDefault();
         dropZone.classList.remove('drag-over');
-        handlePdfFiles(e.dataTransfer.files);
+        procesarArchivos(e.dataTransfer.files);
     });
 
     document.getElementById('inputPdf').addEventListener('change', e => {
-        handlePdfFiles(e.target.files);
-        e.target.value = ''; // reset para poder subir el mismo archivo de nuevo
+        procesarArchivos(e.target.files);
+        e.target.value = '';
     });
 
-    async function handlePdfFiles(files) {
+    // ── MODAL TIPO DE DOCUMENTO ───────────────────────────────────────────
+    let _pendingFile = null;
+    let _selectedTipo = null;
+    let _modalInstance = null;
+
+    function procesarArchivos(files) {
         for (const file of files) {
-            // Validaciones client-side
             if (!file.name.toLowerCase().endsWith('.pdf')) {
-                showToast(`"${file.name}" no es un PDF`, 'err');
-                continue;
+                showToast(`"${file.name}" no es un PDF`, 'err'); continue;
             }
             if (file.size > 5 * 1024 * 1024) {
-                showToast(`"${file.name}" supera los 5 MB`, 'err');
-                continue;
+                showToast(`"${file.name}" supera los 5 MB`, 'err'); continue;
             }
-            await uploadPdf(file);
+            abrirModalTipo(file);
+            break; // Una a la vez para no confundir
         }
     }
 
-    async function uploadPdf(file) {
-        // Mostrar barra de progreso
+    function abrirModalTipo(file) {
+        _pendingFile   = file;
+        _selectedTipo  = null;
+        document.getElementById('modalDocNombre').textContent = `Archivo: ${file.name}`;
+        document.getElementById('btn-tipo-cv').classList.remove('selected');
+        document.getElementById('btn-tipo-constancia').classList.remove('selected');
+        document.getElementById('btnConfirmarTipo').disabled = true;
+        _modalInstance = new bootstrap.Modal(document.getElementById('modalTipoDoc'));
+        _modalInstance.show();
+    }
+
+    function seleccionarTipo(tipo) {
+        _selectedTipo = tipo;
+        document.getElementById('btn-tipo-cv').classList.toggle('selected', tipo === 'cv');
+        document.getElementById('btn-tipo-constancia').classList.toggle('selected', tipo === 'constancia_estudios');
+        document.getElementById('btnConfirmarTipo').disabled = false;
+    }
+
+    function cancelarModalTipo() {
+        _pendingFile  = null;
+        _selectedTipo = null;
+        _modalInstance?.hide();
+    }
+
+    async function confirmarTipoYSubir() {
+        if (!_pendingFile || !_selectedTipo) return;
+        const file = _pendingFile;
+        const tipo = _selectedTipo;
+        _modalInstance?.hide();
+        await subirPdf(file, tipo);
+    }
+
+    // ── UPLOAD CON PROGRESO ───────────────────────────────────────────────
+    async function subirPdf(file, tipoDocumento) {
         const wrap = document.getElementById('uploadProgressWrap');
         const fill = document.getElementById('uploadFill');
         const pct  = document.getElementById('uploadPct');
@@ -782,15 +497,15 @@
         wrap.classList.add('active');
         name.textContent = file.name;
 
-        // Simular progreso con XMLHttpRequest para poder leer el progreso real
-        return new Promise((resolve) => {
-            const fd  = new FormData();
+        return new Promise(resolve => {
+            const fd = new FormData();
             fd.append('file', file);
+            fd.append('tipoDocumento', tipoDocumento);
 
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', API_PDF);
+            xhr.open('POST', API_DOC);
 
-            xhr.upload.onprogress = (e) => {
+            xhr.upload.onprogress = e => {
                 if (e.lengthComputable) {
                     const p = Math.round((e.loaded / e.total) * 100);
                     fill.style.width = p + '%';
@@ -804,10 +519,15 @@
 
                 if (xhr.status === 200 || xhr.status === 201) {
                     const data = JSON.parse(xhr.responseText);
-                    addDocToList(file.name, formatBytes(file.size), data.url);
+                    actualizarFilaDoc(tipoDocumento, file.name, file.size);
                     showToast(`"${file.name}" subido correctamente`, 'ok');
                 } else {
-                    showToast(`Error al subir "${file.name}"`, 'err');
+                    try {
+                        const err = JSON.parse(xhr.responseText);
+                        showToast(err.error ?? `Error al subir "${file.name}"`, 'err');
+                    } catch {
+                        showToast(`Error al subir "${file.name}"`, 'err');
+                    }
                 }
                 resolve();
             };
@@ -822,27 +542,33 @@
         });
     }
 
-    // Agrega una fila nueva a la lista de documentos tras subir
-    function addDocToList(fileName, fileSize, url) {
-        const li = document.createElement('li');
-        li.className = 'doc-item';
-        li.innerHTML = `
-            <div class="doc-icon pdf"><i class="fas fa-file-pdf"></i></div>
-            <div class="doc-meta">
-                <div class="doc-name">${fileName}</div>
-                <div class="doc-size">${fileSize}</div>
-            </div>
-            <span class="doc-status uploading">Subido</span>
-            <a class="doc-action" href="${url}" target="_blank" title="Ver / Descargar">
-                <i class="fas fa-download"></i>
-            </a>`;
-        document.getElementById('docList').prepend(li);
+    // Actualiza la fila del documento en la lista sin recargar página
+    function actualizarFilaDoc(tipo, nombre, bytes) {
+        const rowId = tipo === 'cv' ? 'doc-cv-row' : 'doc-constancia-row';
+        const row   = document.getElementById(rowId);
+        const tamStr = bytes >= 1024*1024 ? `${(bytes/1024/1024).toFixed(1)} MB` : `${Math.round(bytes/1024)} KB`;
+        const typeLabel = tipo === 'cv'
+            ? '<span class="doc-type-badge doc-type-cv">CV</span>'
+            : '<span class="doc-type-badge doc-type-constancia">Constancia</span>';
+
+        if (row) {
+            row.style.border = '';
+            row.style.background = '';
+            row.innerHTML = `
+                <div class="doc-icon pdf"><i class="fas fa-file-pdf"></i></div>
+                <div style="flex:1;min-width:0;">
+                    <div class="doc-name">${nombre}</div>
+                    <div class="doc-size">${tamStr} · ${typeLabel}</div>
+                </div>
+                <span class="doc-status pending">Pendiente</span>
+                <span class="doc-action" title="Subido"><i class="fas fa-check" style="color:#22c55e;"></i></span>`;
+        }
     }
 
-    function formatBytes(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1024*1024) return Math.round(b/1024) + ' KB';
+        return (b/1024/1024).toFixed(1) + ' MB';
     }
 </script>
 }

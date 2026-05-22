@@ -1,0 +1,260 @@
+@using GMT.Models
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]        = "Revisión de Documentos";
+    ViewData["ActiveModule"] = "documentos";
+    ViewData["PortalTipo"]   = "admin";
+
+    var docs         = ViewBag.Documentos  as List<DocumentoEmpresa> ?? new();
+    var filtro       = ViewBag.Filtro      as string ?? "pendientes";
+    var cntPendientes = (int)(ViewBag.CountPendientes  ?? 0);
+    var cntAprobados  = (int)(ViewBag.CountAprobados   ?? 0);
+    var cntRechazados = (int)(ViewBag.CountRechazados  ?? 0);
+    var mensaje       = TempData["Mensaje"] as string;
+}
+
+@section Styles {
+<style>
+    :root { --adm-accent:#1b7fc4; --adm-primary:#0f4c75; }
+
+    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+    .page-title  { font-size:22px; font-weight:800; margin:0; }
+
+    .tab-bar { display:flex; gap:4px; background:var(--bg); border-radius:10px; padding:4px; margin-bottom:24px; width:fit-content; }
+    .tab-item { padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; color:var(--text-muted); border:none; background:none; text-decoration:none; transition:var(--transition); cursor:pointer; }
+    .tab-item.active { background:#fff; color:var(--adm-accent); box-shadow:0 1px 4px rgba(0,0,0,.1); }
+
+    /* Documento card */
+    .doc-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:14px; transition:var(--transition); }
+    .doc-card:hover { box-shadow:var(--shadow-md); }
+
+    .doc-card-header { padding:16px 22px; display:flex; align-items:center; justify-content:space-between; gap:14px; border-bottom:1px solid var(--border); }
+    .doc-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+    .doc-icon.convenio    { background:rgba(15,76,117,.1);  color:var(--adm-primary); }
+    .doc-icon.acta        { background:rgba(13,148,136,.1); color:#0d9488; }
+    .doc-icon.comprobante { background:rgba(217,119,6,.1);  color:#d97706; }
+    .doc-icon.otro        { background:rgba(100,116,139,.1);color:#64748b; }
+
+    .doc-nombre  { font-size:14px; font-weight:700; margin-bottom:2px; }
+    .doc-empresa { font-size:12px; color:var(--text-muted); }
+
+    .doc-meta { display:flex; flex-wrap:wrap; gap:14px; font-size:12.5px; color:var(--text-secondary); }
+    .doc-meta-item { display:flex; align-items:center; gap:5px; }
+
+    .doc-card-footer { padding:12px 22px; background:var(--bg); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+
+    .estado-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:600; }
+    .estado-pill::before { content:''; width:5px; height:5px; border-radius:50%; }
+    .pill-pendiente { background:#fef3c7; color:#92400e; } .pill-pendiente::before { background:#f59e0b; }
+    .pill-aprobado  { background:#dcfce7; color:#166534; } .pill-aprobado::before  { background:#22c55e; }
+    .pill-rechazado { background:#fee2e2; color:#991b1b; } .pill-rechazado::before { background:#ef4444; }
+
+    .btn-aprobar  { background:var(--adm-accent); color:#fff; border:none; border-radius:9px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; transition:var(--transition); }
+    .btn-aprobar:hover { background:var(--adm-primary); }
+    .btn-rechazar { background:none; border:1px solid #ef4444; color:#ef4444; border-radius:9px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; transition:var(--transition); }
+    .btn-rechazar:hover { background:#fee2e2; }
+    .btn-ver { background:rgba(27,127,196,.1); color:var(--adm-accent); border:1px solid rgba(27,127,196,.25); border-radius:9px; padding:8px 16px; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:none; transition:var(--transition); display:inline-flex; align-items:center; gap:5px; }
+    .btn-ver:hover { background:rgba(27,127,196,.18); color:var(--adm-primary); }
+
+    .empty-state { text-align:center; padding:60px 20px; color:var(--text-muted); }
+    .empty-state i { font-size:3rem; opacity:.2; display:block; margin-bottom:16px; }
+
+    .toast-msg { position:fixed; top:20px; right:20px; background:var(--adm-primary); color:#fff; padding:12px 20px; border-radius:10px; font-weight:600; font-size:13px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,.2); animation:slideIn .3s ease; }
+    @@keyframes slideIn { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+    .gmt-modal-header { background:linear-gradient(135deg,#991b1b,#ef4444); color:#fff; border-radius:12px 12px 0 0; padding:18px 24px; }
+    .form-label-sm { font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px; display:block; }
+
+    /* Indicador tipo documento */
+    .tipo-label { font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; text-transform:uppercase; letter-spacing:.4px; }
+    .tipo-convenio    { background:rgba(15,76,117,.1);  color:var(--adm-primary); }
+    .tipo-acta        { background:rgba(13,148,136,.1); color:#0d9488; }
+    .tipo-comprobante { background:rgba(217,119,6,.1);  color:#d97706; }
+    .tipo-otro        { background:#f3f4f6; color:#374151; }
+</style>
+}
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="toast-msg" id="toastMsg">@mensaje</div>
+    <script>setTimeout(() => document.getElementById('toastMsg')?.remove(), 4000);</script>
+}
+
+<div class="page-header">
+    <div>
+        <h4 class="page-title">Revisión de Documentos</h4>
+        <p class="mb-0" style="color:var(--text-muted);font-size:13px;">
+            Aprueba o rechaza los documentos subidos por las empresas.
+            Al aprobar convenio + acta constitutiva, la empresa queda verificada automáticamente.
+        </p>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="tab-bar">
+    <a href="/Admin/Documentos?filtro=pendientes" class="tab-item @(filtro=="pendientes"?"active":"")">
+        Pendientes (@cntPendientes)
+    </a>
+    <a href="/Admin/Documentos?filtro=aprobados" class="tab-item @(filtro=="aprobados"?"active":"")">
+        Aprobados (@cntAprobados)
+    </a>
+    <a href="/Admin/Documentos?filtro=rechazados" class="tab-item @(filtro=="rechazados"?"active":"")">
+        Rechazados (@cntRechazados)
+    </a>
+    <a href="/Admin/Documentos?filtro=todos" class="tab-item @(filtro=="todos"?"active":"")">
+        Todos
+    </a>
+</div>
+
+@if (!docs.Any())
+{
+    <div class="empty-state">
+        <i class="fas fa-folder-open"></i>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px;">
+            @(filtro == "pendientes" ? "No hay documentos pendientes de revisión" : "Sin documentos en esta categoría")
+        </div>
+        @if (filtro == "pendientes")
+        {
+            <div style="font-size:13px;">Las empresas aún no han subido documentos</div>
+        }
+    </div>
+}
+else
+{
+    @foreach (var doc in docs)
+    {
+        var tipoIcon = doc.TipoDocumento switch {
+            "convenio"              => "fa-handshake",
+            "acta_constitutiva"    => "fa-file-contract",
+            "comprobante_domicilio"=> "fa-location-dot",
+            _                      => "fa-file"
+        };
+        var tipoIconClass = doc.TipoDocumento switch {
+            "convenio"              => "convenio",
+            "acta_constitutiva"    => "acta",
+            "comprobante_domicilio"=> "comprobante",
+            _                      => "otro"
+        };
+        var tipoLabel = doc.TipoDocumento switch {
+            "convenio"              => "Convenio",
+            "acta_constitutiva"    => "Acta Constitutiva",
+            "comprobante_domicilio"=> "Comp. Domicilio",
+            _                      => "Otro"
+        };
+        var tamanoStr = doc.TamanoBytes >= 1024*1024
+            ? $"{doc.TamanoBytes/1024.0/1024:F1} MB"
+            : $"{doc.TamanoBytes/1024.0:F0} KB";
+
+        <div class="doc-card">
+            <div class="doc-card-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="doc-icon @tipoIconClass"><i class="fas @tipoIcon"></i></div>
+                    <div>
+                        <div class="doc-nombre">@doc.NombreArchivo</div>
+                        <div class="doc-empresa">
+                            <strong>@(doc.Empresa?.NombreEmpresa ?? "—")</strong>
+                            @if (!string.IsNullOrEmpty(doc.Empresa?.RFC))
+                            {
+                                <span style="margin-left:6px;font-family:monospace;opacity:.7;">@doc.Empresa!.RFC</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="tipo-label tipo-@tipoIconClass">@tipoLabel</span>
+                    <span class="estado-pill pill-@doc.Estado">
+                        @(doc.Estado switch { "aprobado" => "Aprobado", "rechazado" => "Rechazado", _ => "Pendiente" })
+                    </span>
+                </div>
+            </div>
+
+            <div style="padding:12px 22px;">
+                <div class="doc-meta">
+                    <span class="doc-meta-item"><i class="fas fa-weight-hanging" style="color:var(--text-muted);"></i> @tamanoStr</span>
+                    <span class="doc-meta-item"><i class="fas fa-calendar" style="color:var(--text-muted);"></i> @doc.FechaSubida.ToString("dd MMM yyyy, HH:mm")</span>
+                    @if (!string.IsNullOrEmpty(doc.Empresa?.NombreContacto))
+                    {
+                        <span class="doc-meta-item"><i class="fas fa-user-tie" style="color:var(--text-muted);"></i> @doc.Empresa!.NombreContacto</span>
+                    }
+                    @if (!string.IsNullOrEmpty(doc.Empresa?.TelefonoContacto))
+                    {
+                        <span class="doc-meta-item"><i class="fas fa-phone" style="color:var(--text-muted);"></i> @doc.Empresa!.TelefonoContacto</span>
+                    }
+                </div>
+            </div>
+
+            <div class="doc-card-footer">
+                <!-- Botón ver en S3 -->
+                <a href="/Admin/VerDocumento/@doc.Id" target="_blank" class="btn-ver">
+                    <i class="fas fa-eye"></i> Ver documento
+                </a>
+
+                @if (doc.Estado == "pendiente")
+                {
+                    <div class="d-flex gap-2">
+                        <button class="btn-rechazar"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalRechazarDoc"
+                                data-doc-id="@doc.Id"
+                                data-doc-nombre="@doc.NombreArchivo">
+                            <i class="fas fa-xmark me-1"></i> Rechazar
+                        </button>
+                        <form asp-action="AprobarDocumento" asp-controller="Admin" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="documentoId" value="@doc.Id" />
+                            <button type="submit" class="btn-aprobar">
+                                <i class="fas fa-check me-1"></i> Aprobar
+                            </button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <span style="font-size:12px;color:var(--text-muted);">
+                        @(doc.Estado == "aprobado" ? "✓ Aprobado" : "✗ Rechazado")
+                    </span>
+                }
+            </div>
+        </div>
+    }
+}
+
+<!-- Modal rechazo doc -->
+<div class="modal fade" id="modalRechazarDoc" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="gmt-modal-header">
+                <h5 class="mb-0 fw-700"><i class="fas fa-file-circle-xmark me-2"></i>Rechazar documento</h5>
+            </div>
+            <form asp-action="RechazarDocumento" asp-controller="Admin" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body p-4">
+                    <input type="hidden" name="documentoId" id="modal-doc-id" />
+                    <p id="modal-doc-nombre" style="font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:14px;"></p>
+                    <label class="form-label-sm">Motivo del rechazo *</label>
+                    <textarea name="motivo" class="form-control" rows="3" required
+                              placeholder="ej: Documento ilegible, RFC no coincide con la razón social, fecha vencida…"></textarea>
+                    <p style="font-size:11.5px;color:var(--text-muted);margin-top:8px;">
+                        La empresa será notificada por correo para que corrija y suba nuevamente el documento.
+                    </p>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light fw-600" data-bs-dismiss="modal" style="border-radius:9px;">Cancelar</button>
+                    <button type="submit" class="btn fw-600" style="background:#ef4444;color:#fff;border-radius:9px;padding:9px 22px;">
+                        <i class="fas fa-xmark me-1"></i> Confirmar Rechazo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('modalRechazarDoc')?.addEventListener('show.bs.modal', function(e) {
+        const btn = e.relatedTarget;
+        document.getElementById('modal-doc-id').value = btn.dataset.docId;
+        document.getElementById('modal-doc-nombre').textContent = 'Documento: ' + btn.dataset.docNombre;
+    });
+</script>
+}

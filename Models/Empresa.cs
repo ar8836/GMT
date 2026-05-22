@@ -67,6 +67,10 @@ namespace GMT.Models
         [Column("datos_completos")]
         public bool DatosCompletos { get; set; } = false;
 
+        // ── Fase 3 ────────────────────────────────────────────────────────────
+        [Column("foto_perfil_url")]
+        public string? FotoPerfilUrl { get; set; }
+
         // Navegación
         [ForeignKey("LoginId")]
         public Login? Login { get; set; }

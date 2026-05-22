@@ -332,7 +332,7 @@
 
                         <div class="row g-2 mb-reg">
                             <div class="col-8">
-                                <select asp-for="Carrera" class="form-control" id="alumno-carrera" required>
+                                <select asp-for="Carrera" class="form-control">
                                     <option value="" disabled selected hidden>Carrera</option>
                                     <option value="ISC">Ing. en Sistemas Computacionales</option>
                                     <option value="IIA">Ing. en Inteligencia Artificial</option>
@@ -346,7 +346,7 @@
                                 </select>
                             </div>
                             <div class="col-4">
-                                <select asp-for="Semestre" class="form-control" id="alumno-semestre" required>
+                                <select asp-for="Semestre" class="form-control">
                                     <option value="" disabled selected hidden>Semestre en Curso</option>
                                     <option value="1">1°</option>
                                     <option value="2">2°</option>
@@ -392,8 +392,7 @@
                         </div>
                         <div class="pw-match-msg mb-reg" id="alumno-pw-match"></div>
 
-                        <button type="submit" class="btn btn-gradient mb-2" id="alumno-submit" disabled
-                                onclick="return validarSelectsAlumno(event)">
+                        <button type="submit" class="btn btn-gradient mb-2" id="alumno-submit" disabled>
                             <i class="fas fa-user-plus me-2"></i>Crear Cuenta
                         </button>
                     </form>
@@ -408,17 +407,18 @@
                         <p class="form-section-label"><i class="fas fa-building me-1"></i>Datos de la empresa</p>
 
                         <div class="mb-reg">
-                            <input asp-for="NombreEmpresa" class="form-control" placeholder="Nombre comercial de la empresa" />
+                            <input asp-for="NombreEmpresa" class="form-control" placeholder="Nombre comercial de la empresa" required />
                         </div>
                         <div class="mb-reg">
-                            <input asp-for="RazonSocial" class="form-control" placeholder="Razón social (si difiere del nombre)" />
+                            <input asp-for="RazonSocial" class="form-control" placeholder="Razón social" required />
                         </div>
                         <div class="row g-2 mb-reg">
                             <div class="col-5">
-                                <input asp-for="RFC" class="form-control" placeholder="RFC (12 o 13 car.)" maxlength="13" style="text-transform:uppercase;" />
+                                <input asp-for="RFC" class="form-control" id="emp-rfc" placeholder="RFC (12 o 13 car.)" maxlength="13" style="text-transform:uppercase;" required />
+                                <div id="rfc-msg" style="font-size:0.68rem;margin-top:3px;display:none;"></div>
                             </div>
                             <div class="col-7">
-                                <select asp-for="Ciudad" class="form-control">
+                                <select asp-for="Ciudad" class="form-control" id="emp-ciudad" required>
                                     <option value="" disabled selected hidden>Ciudad / Municipio</option>
                                     <option>Acapulco de Juárez</option>
                                     <option>Chilpancingo de los Bravo</option>
@@ -455,7 +455,7 @@
                         </div>
                         <div class="row g-2 mb-reg">
                             <div class="col-6">
-                                <select asp-for="Sector" class="form-control">
+                                <select asp-for="Sector" class="form-control" id="emp-sector" required>
                                     <option value="" disabled selected hidden>Sector</option>
                                     <option>Comercio al por menor</option>
                                     <option>Comercio al por mayor</option>
@@ -482,7 +482,7 @@
                                 </select>
                             </div>
                             <div class="col-6 giro-wrapper">
-                                <input type="text" name="Giro" id="giro-input" class="form-control" placeholder="Giro / Actividad" autocomplete="off" />
+                                <input type="text" name="Giro" id="giro-input" class="form-control" placeholder="Giro / Actividad" autocomplete="off" required />
                                 <div class="giro-dropdown" id="giro-dropdown">
                                     <div class="giro-opt" data-val="Abarrotes y misceláneas">Abarrotes y misceláneas</div>
                                     <div class="giro-opt" data-val="Agencia de aduanas">Agencia de aduanas</div>
@@ -842,11 +842,11 @@
                         <p class="form-section-label"><i class="fas fa-user-tie me-1"></i>Persona de contacto</p>
 
                         <div class="mb-reg">
-                            <input asp-for="NombreContacto" class="form-control" placeholder="Nombre del responsable de prácticas" />
+                            <input asp-for="NombreContacto" class="form-control" placeholder="Nombre del responsable de prácticas" required />
                         </div>
                         <div class="row g-2 mb-reg">
                             <div class="col-6">
-                                <input asp-for="PuestoContacto" class="form-control" placeholder="Puesto / Cargo" />
+                                <input asp-for="PuestoContacto" class="form-control" placeholder="Puesto / Cargo" required />
                             </div>
                             <div class="col-6">
                                 <div class="phone-wrap">
@@ -860,7 +860,7 @@
                                         <option value="+56">🇨🇱 +56</option>
                                         <option value="+51">🇵🇪 +51</option>
                                     </select>
-                                    <input asp-for="TelefonoContacto" class="form-control" id="emp-phone" placeholder="744 330 6480" maxlength="12" inputmode="numeric" />
+                                    <input asp-for="TelefonoContacto" class="form-control" id="emp-phone" placeholder="744 330 6480" maxlength="12" inputmode="numeric" required />
                                 </div>
                             </div>
                         </div>
@@ -869,7 +869,7 @@
                         <p class="form-section-label"><i class="fas fa-lock me-1"></i>Acceso</p>
 
                         <div class="mb-reg">
-                            <input asp-for="Email" class="form-control" id="emp-email" placeholder="Correo de la empresa" autocomplete="username" />
+                            <input asp-for="Email" class="form-control" id="emp-email" placeholder="Correo de la empresa" autocomplete="username" required />
                         </div>
 
                         <div class="mb-reg pw-wrap">
@@ -895,8 +895,14 @@
                         </div>
                         <div class="pw-match-msg mb-reg" id="emp-pw-match"></div>
 
-                        <button type="submit" class="btn btn-gradient mb-2" id="emp-submit" disabled>
-                            <i class="fas fa-building me-2"></i>Crear Cuenta Empresarial
+                        <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.2);border-radius:0.6rem;padding:8px 11px;margin-bottom:0.45rem;font-size:0.68rem;color:rgba(255,255,255,0.65);line-height:1.5;">
+                            <i class="fas fa-circle-info me-1" style="color:var(--accent-cyan);"></i>
+                            Tu solicitud será revisada por el departamento de <strong style="color:rgba(255,255,255,0.85);">Vinculación</strong>
+                            antes de poder publicar plazas. Recibirás un correo de confirmación en cada etapa.
+                        </div>
+                        <button type="submit" class="btn btn-gradient mb-2" id="emp-submit" disabled
+                                onclick="return validarFormEmpresa(event)">
+                            <i class="fas fa-building me-2"></i>Solicitar Registro Empresarial
                         </button>
                     </form>
                 </div>
@@ -1112,47 +1118,108 @@ $(document).ready(function() {
 });
 
 // ══════════════════════════════════════════════════════════
-//  VALIDACIÓN SELECTS — CARRERA Y SEMESTRE
-//  Bloquea el submit si algún select quedó sin seleccionar.
-//  El botón ya está disabled por la lógica de contraseña,
-//  pero esta función es una segunda barrera.
+//  VALIDACIÓN RFC — formato SAT mexicano
+//  Persona moral:  3 letras + 6 dígitos fecha + 3 alfanum = 12
+//  Persona física: 4 letras + 6 dígitos fecha + 3 alfanum = 13
 // ══════════════════════════════════════════════════════════
-function validarSelectsAlumno(e) {
-    const carrera  = document.getElementById('alumno-carrera');
-    const semestre = document.getElementById('alumno-semestre');
+const RFC_RE = /^([A-ZÑ&]{3,4})[0-9]{6}([A-Z0-9]{3})$/i;
+
+function validarRFC(rfc) {
+    return RFC_RE.test(rfc.trim().replace(/\s/g, ''));
+}
+
+const rfcInput = document.getElementById('emp-rfc');
+const rfcMsg   = document.getElementById('rfc-msg');
+
+if (rfcInput) {
+    rfcInput.addEventListener('input', function () {
+        this.value = this.value.toUpperCase();
+        const val  = this.value.trim();
+        if (!val) { rfcMsg.style.display = 'none'; rfcInput.style.border = ''; return; }
+        rfcMsg.style.display = 'block';
+        if (validarRFC(val)) {
+            rfcMsg.innerHTML   = '<i class="fas fa-circle-check" style="color:#4ade80;"></i> Formato válido';
+            rfcMsg.style.color = '#4ade80';
+            rfcInput.style.border = '';
+        } else {
+            const faltante = val.length < 12 ? ` (faltan ${12 - val.length}+ chars)` : '';
+            rfcMsg.innerHTML   = `<i class="fas fa-circle-xmark" style="color:#f87171;"></i> Formato incorrecto${faltante}`;
+            rfcMsg.style.color = '#f87171';
+            rfcInput.style.border = '1px solid #f87171';
+        }
+        actualizarBotonEmpresa();
+    });
+}
+
+// ══════════════════════════════════════════════════════════
+//  VALIDACIÓN FORM EMPRESA al submit
+// ══════════════════════════════════════════════════════════
+function validarFormEmpresa(e) {
     const errStyle = '1px solid #f87171';
+    let primerError = null;
 
-    let ok = true;
-
-    if (!carrera.value) {
-        carrera.style.border = errStyle;
-        carrera.focus();
-        ok = false;
-    } else {
-        carrera.style.border = '';
+    function check(id) {
+        const el = document.getElementById(id);
+        if (!el) return true;
+        const empty = !el.value || !el.value.trim();
+        el.style.border = empty ? errStyle : '';
+        if (empty && !primerError) primerError = el;
+        return !empty;
     }
 
-    if (!semestre.value) {
-        semestre.style.border = errStyle;
-        if (ok) semestre.focus();
-        ok = false;
-    } else {
-        semestre.style.border = '';
-    }
+    const ok = [
+        check('emp-rfc'),
+        check('emp-ciudad'),
+        check('emp-sector'),
+        check('giro-input'),
+    ].every(Boolean) && validarRFC(document.getElementById('emp-rfc')?.value ?? '');
 
-    if (!ok) {
-        e.preventDefault();
-        return false;
-    }
+    if (!ok) { e.preventDefault(); if (primerError) primerError.focus(); return false; }
     return true;
 }
 
-// Limpiar borde rojo al seleccionar
-document.addEventListener('DOMContentLoaded', () => {
-    const carrera  = document.getElementById('alumno-carrera');
-    const semestre = document.getElementById('alumno-semestre');
-    if (carrera)  carrera.addEventListener('change',  () => { carrera.style.border  = ''; });
-    if (semestre) semestre.addEventListener('change', () => { semestre.style.border = ''; });
+// Limpiar bordes rojos al interactuar
+['emp-ciudad', 'emp-sector'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', () => { el.style.border = ''; actualizarBotonEmpresa(); });
+});
+
+// ══════════════════════════════════════════════════════════
+//  HABILITAR BOTÓN EMPRESA
+//  Condiciones: pw válida + pw coinciden + RFC válido + giro
+// ══════════════════════════════════════════════════════════
+function actualizarBotonEmpresa() {
+    const pw1  = document.getElementById('emp-pw')?.value    ?? '';
+    const pw2  = document.getElementById('emp-pw2')?.value   ?? '';
+    const rfc  = document.getElementById('emp-rfc')?.value   ?? '';
+    const giro = document.getElementById('giro-input')?.value.trim() ?? '';
+    const btn  = document.getElementById('emp-submit');
+    if (!btn) return;
+    btn.disabled = !(pwValid(pw1) && pw1 === pw2 && validarRFC(rfc) && giro.length > 0);
+}
+
+// Enganchar actualizarBotonEmpresa a los watchers de contraseña
+['emp-pw','emp-pw2'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', actualizarBotonEmpresa);
+});
+document.getElementById('giro-input')?.addEventListener('input', actualizarBotonEmpresa);
+
+// ══════════════════════════════════════════════════════════
+//  VALIDACIÓN SELECTS ALUMNO (carrera y semestre)
+// ══════════════════════════════════════════════════════════
+function validarSelectsAlumno(e) {
+    const errStyle = '1px solid #f87171';
+    let ok = true;
+    ['alumno-carrera','alumno-semestre'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el || !el.value) { if(el) el.style.border = errStyle; ok = false; }
+        else el.style.border = '';
+    });
+    if (!ok) { e.preventDefault(); return false; }
+    return true;
+}
+['alumno-carrera','alumno-semestre'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', e => { e.target.style.border = ''; });
 });
 
 </script>

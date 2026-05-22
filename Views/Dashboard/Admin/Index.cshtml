@@ -1,0 +1,197 @@
+@using GMT.Models
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]        = "Panel de Administrador";
+    ViewData["ActiveModule"] = "dashboard";
+    ViewData["PortalTipo"]   = "admin";
+
+    int totalEmpresas       = ViewBag.TotalEmpresas       ?? 0;
+    int empresasPendientes  = ViewBag.EmpresasPendientes  ?? 0;
+    int empresasVerificadas = ViewBag.EmpresasVerificadas ?? 0;
+    int totalAlumnos        = ViewBag.TotalAlumnos        ?? 0;
+    int docsPendientes      = ViewBag.DocsPendientesTotal ?? 0;
+    int bloqueadas          = ViewBag.EmpresasBloqueadasN ?? 0;
+    var ultimasPendientes   = ViewBag.UltimasPendientes   as List<Empresa> ?? new();
+}
+
+@section Styles {
+<style>
+    :root { --adm-accent:#1b7fc4; --adm-primary:#0f4c75; }
+
+    .page-header { margin-bottom:28px; }
+    .page-title  { font-size:22px; font-weight:800; margin:0; }
+
+    .kpi-card {
+        background: var(--bg-card); border:1px solid var(--border);
+        border-radius:var(--radius); padding:22px 24px;
+        display:flex; align-items:flex-start; gap:16px;
+        box-shadow:var(--shadow-sm); transition:var(--transition); position:relative; overflow:hidden;
+    }
+    .kpi-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+    .kpi-card::after { content:''; position:absolute; bottom:0; left:0; height:3px; width:100%; opacity:0; transition:opacity .3s; }
+    .kpi-card:hover::after { opacity:1; }
+    .kpi-card.blue::after  { background:linear-gradient(90deg,var(--adm-primary),var(--adm-accent)); }
+    .kpi-card.green::after { background:linear-gradient(90deg,#0d9488,#34d399); }
+    .kpi-card.amber::after { background:linear-gradient(90deg,#d97706,#fbbf24); }
+    .kpi-card.red::after   { background:linear-gradient(90deg,#dc2626,#f87171); }
+
+    .kpi-icon { width:50px; height:50px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+    .kpi-icon.blue  { background:rgba(27,127,196,.1);  color:var(--adm-accent); }
+    .kpi-icon.green { background:rgba(13,148,136,.1);  color:#0d9488; }
+    .kpi-icon.amber { background:rgba(217,119,6,.1);   color:#d97706; }
+    .kpi-icon.red   { background:rgba(220,38,38,.1);   color:#dc2626; }
+
+    .kpi-label { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+    .kpi-value { font-size:32px; font-weight:800; color:var(--text-primary); line-height:1; letter-spacing:-1px; }
+
+    .section-title {
+        font-size:15px; font-weight:700; color:var(--text-primary);
+        display:flex; align-items:center; gap:8px; margin-bottom:16px;
+    }
+    .section-title::before { content:''; width:3px; height:18px; background:var(--adm-accent); border-radius:2px; display:inline-block; }
+
+    .gmt-table-wrapper { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow-sm); }
+    .gmt-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+    .gmt-table thead th { padding:13px 18px; font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--text-muted); background:var(--bg); border-bottom:1px solid var(--border); }
+    .gmt-table tbody tr { border-bottom:1px solid var(--border); transition:background .15s; }
+    .gmt-table tbody tr:last-child { border-bottom:none; }
+    .gmt-table tbody tr:hover { background:rgba(27,127,196,.03); }
+    .gmt-table tbody td { padding:14px 18px; vertical-align:middle; }
+
+    .quick-action { display:flex; align-items:center; gap:14px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px 20px; text-decoration:none; color:var(--text-primary); transition:var(--transition); }
+    .quick-action:hover { border-color:var(--adm-accent); transform:translateY(-2px); box-shadow:var(--shadow-md); color:var(--text-primary); }
+    .qa-icon { width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+    .qa-title { font-size:13.5px; font-weight:700; margin-bottom:2px; }
+    .qa-desc  { font-size:11.5px; color:var(--text-muted); }
+</style>
+}
+
+<div class="page-header">
+    <h4 class="page-title">Panel de Administrador</h4>
+    <p class="mb-0" style="color:var(--text-muted);font-size:13px;">
+        @DateTime.Now.ToString("dddd, d 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-MX"))
+    </p>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card amber">
+            <div class="kpi-icon amber"><i class="fas fa-clock"></i></div>
+            <div>
+                <div class="kpi-label">Docs Pendientes</div>
+                <div class="kpi-value">@docsPendientes</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card green">
+            <div class="kpi-icon green"><i class="fas fa-building-circle-check"></i></div>
+            <div>
+                <div class="kpi-label">Verificadas</div>
+                <div class="kpi-value">@empresasVerificadas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card blue">
+            <div class="kpi-icon blue"><i class="fas fa-user-graduate"></i></div>
+            <div>
+                <div class="kpi-label">Alumnos</div>
+                <div class="kpi-value">@totalAlumnos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card red">
+            <div class="kpi-icon red"><i class="fas fa-ban"></i></div>
+            <div>
+                <div class="kpi-label">Lista Negra</div>
+                <div class="kpi-value">@bloqueadas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Acciones rápidas -->
+    <div class="col-12 col-lg-4">
+        <div class="section-title">Acciones rápidas</div>
+        <div class="d-flex flex-column gap-3">
+            <a href="/Admin/Documentos" class="quick-action">
+                <div class="qa-icon" style="background:rgba(217,119,6,.1);color:#d97706;"><i class="fas fa-folder-open"></i></div>
+                <div>
+                    <div class="qa-title">Revisar Documentos</div>
+                    <div class="qa-desc">@docsPendientes documento@(docsPendientes != 1 ? "s" : "") esperando revisión</div>
+                </div>
+            </a>
+            <a href="/Admin/Empresas" class="quick-action">
+                <div class="qa-icon" style="background:rgba(13,148,136,.1);color:#0d9488;"><i class="fas fa-building-circle-check"></i></div>
+                <div>
+                    <div class="qa-title">Empresas Aprobadas</div>
+                    <div class="qa-desc">@empresasVerificadas empresa@(empresasVerificadas != 1 ? "s" : "") verificada@(empresasVerificadas != 1 ? "s" : "")</div>
+                </div>
+            </a>
+            <a href="/Admin/ListaNegra" class="quick-action">
+                <div class="qa-icon" style="background:rgba(220,38,38,.1);color:#dc2626;"><i class="fas fa-ban"></i></div>
+                <div>
+                    <div class="qa-title">Lista Negra</div>
+                    <div class="qa-desc">@bloqueadas empresa@(bloqueadas != 1 ? "s" : "") bloqueada@(bloqueadas != 1 ? "s" : "")</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Empresas pendientes de documentos -->
+    <div class="col-12 col-lg-8">
+        <div class="section-title">Empresas sin verificar (recientes)</div>
+        <div class="gmt-table-wrapper">
+            @if (!ultimasPendientes.Any())
+            {
+                <div class="text-center py-5" style="color:var(--text-muted);">
+                    <i class="fas fa-check-circle fa-2x mb-3 d-block" style="opacity:.3;color:#0d9488;"></i>
+                    <div style="font-size:13px;">No hay empresas pendientes — todo al día</div>
+                </div>
+            }
+            else
+            {
+                <table class="gmt-table">
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>RFC</th>
+                            <th>Docs</th>
+                            <th>Registro</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var emp in ultimasPendientes)
+                        {
+                            var docsCount = emp.DocumentosEmpresa?.Count ?? 0;
+                            <tr>
+                                <td>
+                                    <div style="font-weight:600;">@emp.NombreEmpresa</div>
+                                    <div style="font-size:11.5px;color:var(--text-muted);">@emp.NombreContacto</div>
+                                </td>
+                                <td style="font-size:12.5px;font-family:monospace;">@emp.RFC</td>
+                                <td>
+                                    <span style="font-size:12px;color:@(docsCount > 0 ? "#0d9488" : "#d97706");font-weight:600;">
+                                        <i class="fas @(docsCount > 0 ? "fa-file-circle-check" : "fa-file-circle-xmark")"></i>
+                                        @docsCount
+                                    </span>
+                                </td>
+                                <td style="font-size:12px;color:var(--text-muted);">@emp.FechaRegistro.ToString("dd MMM")</td>
+                                <td>
+                                    <a href="/Admin/Documentos" style="font-size:12px;color:var(--adm-accent);font-weight:600;text-decoration:none;">
+                                        Revisar →
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
